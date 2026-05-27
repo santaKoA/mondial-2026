@@ -156,6 +156,8 @@ export default function LeaderboardPage() {
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">#</th>
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">שם</th>
+                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">🎯 בול</th>
+                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">↗ כיוון</th>
                 <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">🏆 זוכה</th>
                 <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">⚽ מלך שערים</th>
                 <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">נקודות</th>
@@ -178,6 +180,12 @@ export default function LeaderboardPage() {
                       {user.name}
                     </span>
                     {user.id === me?.id && <span className="text-xs text-green-400/60 mr-1">(אני)</span>}
+                  </td>
+                  <td className="py-3 px-2 text-center text-sm font-bold text-green-400">
+                    {user.exact_count > 0 ? user.exact_count : <span className="text-white/20 font-normal">0</span>}
+                  </td>
+                  <td className="py-3 px-2 text-center text-sm font-bold text-yellow-400">
+                    {user.direction_count > 0 ? user.direction_count : <span className="text-white/20 font-normal">0</span>}
                   </td>
                   <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
                     {user.winner_pick || <span className="text-white/20">—</span>}
