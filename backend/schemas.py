@@ -63,6 +63,7 @@ class JoinRequest(BaseModel):
 class TokenResponse(BaseModel):
     token: str
     user: UserOut
+    group: Optional["GroupOut"] = None
 
 
 class SpecialPredictionIn(BaseModel):
@@ -102,3 +103,8 @@ class GroupOut(BaseModel):
 
 class GroupCreateIn(BaseModel):
     name: str
+
+
+class GroupCreatePublicIn(BaseModel):
+    user_name: str
+    group_name: str

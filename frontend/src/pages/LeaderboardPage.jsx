@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 
@@ -9,6 +10,10 @@ export default function LeaderboardPage() {
   const [groups, setGroups] = useState([])
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [newGroup, setNewGroup] = useState(null)
   const { user: me } = useAuth()
 
   useEffect(() => {
@@ -19,6 +24,24 @@ export default function LeaderboardPage() {
       })
       .catch(() => {})
   }, [])
+
+  async function handleCreateGroup(e) {
+    e.preventDefault()
+    if (!newGroupName.trim()) return
+    setCreating(true)
+    try {
+      const { data } = await api.post('/api/auth/groups', { name: newGroupName.trim() })
+      setGroups(prev => [...prev, data])
+      setActiveGroupId(data.id)
+      setNewGroup(data)
+      setNewGroupName('')
+      setShowCreate(false)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'שגיאה')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -32,7 +55,44 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black mb-4">🏆 טבלת דירוג</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-black">🏆 טבלת דירוג</h1>
+        <button
+          onClick={() => { setShowCreate(v => !v); setNewGroup(null) }}
+          className="btn-secondary text-sm py-1.5 px-3"
+        >
+          + קבוצה חדשה
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreateGroup} className="card mb-4 flex gap-2">
+          <input
+            type="text"
+            value={newGroupName}
+            onChange={e => setNewGroupName(e.target.value)}
+            placeholder='שם הקבוצה (למשל: "משפחה")'
+            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm"
+            autoFocus
+          />
+          <button type="submit" disabled={creating || !newGroupName.trim()} className="btn-primary text-sm py-2 px-4">
+            {creating ? '...' : 'צור'}
+          </button>
+        </form>
+      )}
+
+      {newGroup && (
+        <div
+          className="card mb-4 bg-green-500/10 border-green-500/30 cursor-pointer"
+          onClick={() => { navigator.clipboard?.writeText(newGroup.code); toast.success('קוד הועתק!') }}
+        >
+          <p className="text-sm text-green-400/80 mb-1">✅ הקבוצה "<strong>{newGroup.name}</strong>" נוצרה!</p>
+          <p className="text-sm text-white/60">קוד הצטרפות לשיתוף:
+            <code className="mr-2 text-green-300 font-mono font-bold tracking-wider">{newGroup.code}</code>
+            <span className="text-xs text-white/30">(לחץ להעתקה)</span>
+          </p>
+        </div>
+      )}
 
       {groups.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
