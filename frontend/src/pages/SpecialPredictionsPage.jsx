@@ -106,7 +106,7 @@ export default function SpecialPredictionsPage() {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-2xl">⚽</span>
             <h2 className="text-lg font-bold">מלך השערים</h2>
-            <span className="mr-auto text-xs text-green-400 font-bold">10 נק׳</span>
+            <span className="mr-auto text-xs text-green-400 font-bold">15 נק׳</span>
           </div>
           <p className="text-white/40 text-sm mb-4">מי ישיג את שערים הכי הרבה בטורניר?</p>
 
