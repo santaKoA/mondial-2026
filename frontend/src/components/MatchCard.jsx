@@ -68,6 +68,8 @@ export default function MatchCard({ match, onPredictionSaved }) {
   )
   const [saving, setSaving] = useState(false)
   const [closed, setClosed] = useState(false)
+  const [groupPreds, setGroupPreds] = useState(null)
+  const [loadingGroup, setLoadingGroup] = useState(false)
 
   const isClosed = closed || match.status === 'finished' || (() => {
     const cutoff = parseUtc(match.scheduled_at).getTime() - 5 * 60 * 1000
@@ -75,6 +77,19 @@ export default function MatchCard({ match, onPredictionSaved }) {
   })()
 
   const handleExpired = useCallback(() => setClosed(true), [])
+
+  async function toggleGroupPreds() {
+    if (groupPreds) { setGroupPreds(null); return }
+    setLoadingGroup(true)
+    try {
+      const { data } = await api.get(`/api/predictions/match/${match.id}`)
+      setGroupPreds(data)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setLoadingGroup(false)
+    }
+  }
 
   async function handleSave() {
     const h = parseInt(homeInput)
@@ -215,9 +230,43 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
       </div>
 
-      {!isFinished && (
+      {!isFinished && !isClosed && (
         <div className="mt-3 text-center">
           <PointsBadge stage={match.stage} />
+        </div>
+      )}
+
+      {isClosed && (
+        <div className="mt-3 border-t border-white/10 pt-2">
+          <button
+            onClick={toggleGroupPreds}
+            disabled={loadingGroup}
+            className="text-xs text-white/40 hover:text-white/70 transition-colors w-full text-center"
+          >
+            {loadingGroup ? '...' : groupPreds ? '▲ הסתר ניחושי הקבוצה' : '👥 ניחושי הקבוצה'}
+          </button>
+          {groupPreds && (
+            <div className="mt-2 space-y-1">
+              {groupPreds.map(p => (
+                <div key={p.user_name} className="flex items-center justify-between text-xs px-1">
+                  <span className="text-white/60">{p.user_name}</span>
+                  {p.home_score != null
+                    ? <span className={`font-medium ${
+                        p.points != null
+                          ? p.points >= (match.stage === 'group' ? 3 : match.stage === 'final' ? 10 : 5)
+                            ? 'text-green-400'
+                            : p.points > 0 ? 'text-yellow-400' : 'text-white/50'
+                          : 'text-white/70'
+                      }`}>
+                        {p.home_score}–{p.away_score}
+                        {p.points != null && <span className="text-white/40 mr-1"> ({p.points}נק)</span>}
+                      </span>
+                    : <span className="text-red-400/50">לא הוגש</span>
+                  }
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

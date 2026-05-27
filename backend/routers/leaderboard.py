@@ -1,15 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime, timezone
 from database import get_db
+from config import settings
 import models
 import schemas
 import auth as auth_utils
 
+
+def _tournament_started() -> bool:
+    start = datetime.fromisoformat(settings.TOURNAMENT_START).replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= start
+
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
 
-def _build_leaderboard(users: list[models.User]) -> list[schemas.UserOut]:
+def _build_leaderboard(users: list[models.User], reveal_special: bool = True) -> list[schemas.UserOut]:
     result = []
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
@@ -36,8 +43,8 @@ def _build_leaderboard(users: list[models.User]) -> list[schemas.UserOut]:
                 prediction_count=len(user.predictions),
                 exact_count=exact_count,
                 direction_count=direction_count,
-                winner_pick=winner_pick,
-                top_scorer_pick=top_scorer_pick,
+                winner_pick=winner_pick if reveal_special else None,
+                top_scorer_pick=top_scorer_pick if reveal_special else None,
             )
         )
     result.sort(key=lambda u: (-u.total_points, u.name))
@@ -60,7 +67,7 @@ def leaderboard(
     else:
         users = db.query(models.User).all()
 
-    return _build_leaderboard(users)
+    return _build_leaderboard(users, reveal_special=_tournament_started())
 
 
 @router.get("/groups", response_model=list[schemas.GroupOut])

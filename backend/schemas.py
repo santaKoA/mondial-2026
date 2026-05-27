@@ -115,3 +115,10 @@ class GroupCreatePublicIn(BaseModel):
     user_name: str
     group_name: str
     password: str
+
+
+class GroupPredictionOut(BaseModel):
+    user_name: str
+    home_score: Optional[int]
+    away_score: Optional[int]
+    points: Optional[int]

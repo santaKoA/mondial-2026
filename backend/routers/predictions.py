@@ -58,6 +58,52 @@ def upsert_prediction(
         return schemas.PredictionOut.model_validate(pred)
 
 
+@router.get("/match/{match_id}", response_model=list[schemas.GroupPredictionOut])
+def group_predictions(
+    match_id: int,
+    current_user: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    match = db.query(models.Match).filter(models.Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    cutoff = match.scheduled_at.replace(tzinfo=timezone.utc) - timedelta(minutes=CUTOFF_MINUTES)
+    if datetime.now(timezone.utc) < cutoff:
+        raise HTTPException(status_code=403, detail="ניחושים יוצגו לאחר תחילת המשחק")
+
+    group_id = current_user.group_id
+    if not group_id:
+        return []
+
+    group_user_ids = [
+        ug.user_id for ug in
+        db.query(models.UserGroup).filter(models.UserGroup.group_id == group_id).all()
+    ]
+    group_users = {u.id: u.name for u in db.query(models.User).filter(models.User.id.in_(group_user_ids)).all()}
+
+    pred_map = {
+        p.user_id: p for p in
+        db.query(models.Prediction).filter(
+            models.Prediction.match_id == match_id,
+            models.Prediction.user_id.in_(group_user_ids),
+        ).all()
+    }
+
+    result = []
+    for uid, uname in group_users.items():
+        p = pred_map.get(uid)
+        result.append(schemas.GroupPredictionOut(
+            user_name=uname,
+            home_score=p.home_score if p else None,
+            away_score=p.away_score if p else None,
+            points=p.points if p else None,
+        ))
+
+    result.sort(key=lambda x: (x.home_score is None, x.user_name))
+    return result
+
+
 @router.get("/my", response_model=list[schemas.PredictionOut])
 def my_predictions(
     current_user: models.User = Depends(auth_utils.get_current_user),
