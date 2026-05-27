@@ -14,7 +14,11 @@ export default function LeaderboardPage() {
   const [newGroupName, setNewGroupName] = useState('')
   const [creating, setCreating] = useState(false)
   const [newGroup, setNewGroup] = useState(null)
+  const [removing, setRemoving] = useState(null)
   const { user: me } = useAuth()
+
+  const activeGroup = groups.find(g => g.id === activeGroupId)
+  const isOwner = activeGroup?.owner_id === me?.id
 
   useEffect(() => {
     api.get('/api/leaderboard/groups')
@@ -24,6 +28,21 @@ export default function LeaderboardPage() {
       })
       .catch(() => {})
   }, [])
+
+  async function handleRemoveMember(userId) {
+    if (!activeGroupId) return
+    setRemoving(userId)
+    try {
+      await api.delete(`/api/leaderboard/groups/${activeGroupId}/members/${userId}`)
+      toast.success('החבר הוסר מהקבוצה')
+      const r = await api.get('/api/leaderboard/groups')
+      setGroups(r.data)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'שגיאה')
+    } finally {
+      setRemoving(null)
+    }
+  }
 
   async function handleCreateGroup(e) {
     e.preventDefault()
@@ -139,6 +158,7 @@ export default function LeaderboardPage() {
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">שם</th>
                 <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">ניחושים</th>
                 <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">נקודות</th>
+                {isOwner && <th className="py-3 px-2"></th>}
               </tr>
             </thead>
             <tbody>
@@ -166,6 +186,20 @@ export default function LeaderboardPage() {
                       {user.total_points}
                     </span>
                   </td>
+                  {isOwner && (
+                    <td className="py-3 px-2 text-center">
+                      {user.id !== me?.id && (
+                        <button
+                          onClick={() => handleRemoveMember(user.id)}
+                          disabled={removing === user.id}
+                          className="text-red-400/60 hover:text-red-400 text-xs px-1.5 py-0.5 rounded transition-colors disabled:opacity-30"
+                          title="הסר מהקבוצה"
+                        >
+                          {removing === user.id ? '...' : '✕'}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

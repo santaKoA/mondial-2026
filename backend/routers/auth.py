@@ -24,7 +24,7 @@ def _user_to_out(user: models.User, db: Session) -> schemas.UserOut:
 
 def _group_to_out(group: models.Group, db: Session) -> schemas.GroupOut:
     count = db.query(models.UserGroup).filter(models.UserGroup.group_id == group.id).count()
-    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count)
+    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count, owner_id=group.owner_id)
 
 
 def _add_to_group(user: models.User, group: models.Group, db: Session):
@@ -87,7 +87,7 @@ def create_group_and_join(body: schemas.GroupCreatePublicIn, db: Session = Depen
 
     user = _get_or_create_user(user_name, False, db)
     code = secrets.token_urlsafe(6)
-    group = models.Group(name=group_name, code=code)
+    group = models.Group(name=group_name, code=code, owner_id=user.id)
     db.add(group)
     db.flush()
     _add_to_group(user, group, db)
@@ -107,14 +107,14 @@ def create_additional_group(
     db: Session = Depends(get_db),
 ):
     code = secrets.token_urlsafe(6)
-    group = models.Group(name=body.name.strip(), code=code)
+    group = models.Group(name=body.name.strip(), code=code, owner_id=current_user.id)
     db.add(group)
     db.flush()
     _add_to_group(current_user, group, db)
     db.commit()
     db.refresh(group)
     count = db.query(models.UserGroup).filter(models.UserGroup.group_id == group.id).count()
-    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count)
+    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count, owner_id=group.owner_id)
 
 
 @router.get("/me", response_model=schemas.UserOut)

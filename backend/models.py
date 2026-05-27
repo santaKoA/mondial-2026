@@ -9,6 +9,7 @@ class Group(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     code = Column(String, unique=True, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     members = relationship("UserGroup", back_populates="group")

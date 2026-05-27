@@ -97,6 +97,7 @@ class GroupOut(BaseModel):
     name: str
     code: str
     member_count: int = 0
+    owner_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

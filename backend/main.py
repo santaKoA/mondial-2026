@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from database import Base, engine, SessionLocal
 from routers import auth, matches, predictions, leaderboard, special_predictions, admin
 import seed_data
@@ -25,6 +26,12 @@ app.include_router(admin.router)
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE league_groups ADD COLUMN owner_id INTEGER REFERENCES users(id)"))
+            conn.commit()
+        except Exception:
+            pass  # column already exists
     db = SessionLocal()
     try:
         seed_data.seed(db)

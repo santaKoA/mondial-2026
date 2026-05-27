@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
@@ -59,5 +59,30 @@ def my_groups(
         group = db.query(models.Group).filter(models.Group.id == ug.group_id).first()
         if group:
             count = db.query(models.UserGroup).filter(models.UserGroup.group_id == group.id).count()
-            result.append(schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count))
+            result.append(schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count, owner_id=group.owner_id))
     return result
+
+
+@router.delete("/groups/{group_id}/members/{user_id}")
+def remove_member(
+    group_id: int,
+    user_id: int,
+    current_user: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="קבוצה לא נמצאה")
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="רק ראש הקבוצה יכול להסיר חברים")
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="לא ניתן להסיר את עצמך מהקבוצה")
+    membership = db.query(models.UserGroup).filter(
+        models.UserGroup.group_id == group_id,
+        models.UserGroup.user_id == user_id,
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="המשתמש אינו בקבוצה")
+    db.delete(membership)
+    db.commit()
+    return {"ok": True}

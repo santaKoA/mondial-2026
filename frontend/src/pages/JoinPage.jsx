@@ -97,7 +97,7 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="pt-8">
+    <div className="pt-4">
       <div className="w-full max-w-sm mx-auto">
         {/* Logo */}
         <div className="text-center mb-3">
