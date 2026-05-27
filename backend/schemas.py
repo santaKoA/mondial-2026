@@ -89,3 +89,16 @@ class SpecialResultIn(BaseModel):
     prediction_type: str
     correct_value: str
     points_awarded: int
+
+
+class GroupOut(BaseModel):
+    id: int
+    name: str
+    code: str
+    member_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class GroupCreateIn(BaseModel):
+    name: str

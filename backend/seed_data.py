@@ -1,6 +1,8 @@
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
+from config import settings
 import models
+import secrets
 
 GROUPS: dict[str, list[tuple[str, str]]] = {
     "A": [("קטאר", "🇶🇦"), ("הולנד", "🇳🇱"), ("סנגל", "🇸🇳"), ("אקוודור", "🇪🇨")],
@@ -34,6 +36,15 @@ KNOCKOUT_STAGES = [
 
 
 def seed(db: Session):
+    # Ensure default group exists (idempotent)
+    default_group = db.query(models.Group).filter(
+        models.Group.code == settings.GROUP_CODE
+    ).first()
+    if not default_group:
+        default_group = models.Group(name="קבוצה ראשית", code=settings.GROUP_CODE)
+        db.add(default_group)
+        db.flush()
+
     if db.query(models.Team).count() > 0:
         return
 

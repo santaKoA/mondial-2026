@@ -28,21 +28,36 @@ def join(body: schemas.JoinRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Name required")
 
     is_admin = False
+    group = None
+
     if body.code == settings.ADMIN_CODE:
         is_admin = True
-    elif body.code != settings.GROUP_CODE:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="קוד שגוי")
+        group = db.query(models.Group).filter(models.Group.code == settings.GROUP_CODE).first()
+    else:
+        group = db.query(models.Group).filter(models.Group.code == body.code).first()
+        if not group:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="קוד שגוי")
 
     user = db.query(models.User).filter(models.User.name == name).first()
     if user:
         if is_admin and not user.is_admin:
             user.is_admin = True
-            db.commit()
+            db.flush()
     else:
         user = models.User(name=name, is_admin=is_admin)
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        db.flush()
+
+    if group:
+        existing = db.query(models.UserGroup).filter(
+            models.UserGroup.user_id == user.id,
+            models.UserGroup.group_id == group.id,
+        ).first()
+        if not existing:
+            db.add(models.UserGroup(user_id=user.id, group_id=group.id))
+
+    db.commit()
+    db.refresh(user)
 
     token = auth_utils.create_token(user.id, user.name, user.is_admin)
     return schemas.TokenResponse(token=token, user=_user_to_out(user, db))

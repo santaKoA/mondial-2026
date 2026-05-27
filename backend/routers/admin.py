@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
+import secrets
 import models
 import schemas
 import auth as auth_utils
@@ -103,3 +104,45 @@ def list_teams(
     db: Session = Depends(get_db),
 ):
     return db.query(models.Team).order_by(models.Team.group_name, models.Team.name).all()
+
+
+@router.get("/groups", response_model=list[schemas.GroupOut])
+def list_groups(
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    groups = db.query(models.Group).all()
+    result = []
+    for g in groups:
+        count = db.query(models.UserGroup).filter(models.UserGroup.group_id == g.id).count()
+        result.append(schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=count))
+    return result
+
+
+@router.post("/groups", response_model=schemas.GroupOut)
+def create_group(
+    body: schemas.GroupCreateIn,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    code = secrets.token_urlsafe(6)
+    group = models.Group(name=body.name.strip(), code=code)
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=0)
+
+
+@router.delete("/groups/{group_id}")
+def delete_group(
+    group_id: int,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    db.query(models.UserGroup).filter(models.UserGroup.group_id == group_id).delete()
+    db.delete(group)
+    db.commit()
+    return {"ok": True}

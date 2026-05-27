@@ -4,6 +4,26 @@ from datetime import datetime, timezone
 from database import Base
 
 
+class Group(Base):
+    __tablename__ = "league_groups"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    code = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    members = relationship("UserGroup", back_populates="group")
+
+
+class UserGroup(Base):
+    __tablename__ = "user_groups"
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, primary_key=True)
+    group_id = Column(Integer, ForeignKey("league_groups.id"), nullable=False, primary_key=True)
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="groups")
+    group = relationship("Group", back_populates="members")
+
+
 class Team(Base):
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True, index=True)
@@ -38,6 +58,7 @@ class User(Base):
 
     predictions = relationship("Prediction", back_populates="user")
     special_predictions = relationship("SpecialPrediction", back_populates="user")
+    groups = relationship("UserGroup", back_populates="user")
 
 
 class Prediction(Base):

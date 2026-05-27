@@ -121,24 +121,54 @@ export default function AdminPage() {
   const [teams, setTeams] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('matches')
+  const [activeTab, setActiveTab] = useState('groups')
   const [specialType, setSpecialType] = useState('winner')
   const [specialValue, setSpecialValue] = useState('')
   const [specialPoints, setSpecialPoints] = useState(15)
   const [saving, setSaving] = useState(false)
+  const [groups, setGroups] = useState([])
+  const [newGroupName, setNewGroupName] = useState('')
+  const [creatingGroup, setCreatingGroup] = useState(false)
 
   async function loadData() {
     try {
-      const [mRes, tRes, uRes] = await Promise.all([
+      const [mRes, tRes, uRes, gRes] = await Promise.all([
         api.get('/api/matches'),
         api.get('/api/admin/teams'),
         api.get('/api/admin/users'),
+        api.get('/api/admin/groups'),
       ])
       setMatches(mRes.data)
       setTeams(tRes.data)
       setUsers(uRes.data)
+      setGroups(gRes.data)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function createGroup() {
+    if (!newGroupName.trim()) return
+    setCreatingGroup(true)
+    try {
+      const { data } = await api.post('/api/admin/groups', { name: newGroupName.trim() })
+      setGroups(prev => [...prev, data])
+      setNewGroupName('')
+      toast.success(`קבוצה "${data.name}" נוצרה — קוד: ${data.code}`)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setCreatingGroup(false)
+    }
+  }
+
+  async function deleteGroup(id) {
+    try {
+      await api.delete(`/api/admin/groups/${id}`)
+      setGroups(prev => prev.filter(g => g.id !== id))
+      toast.success('קבוצה נמחקה')
+    } catch (e) {
+      toast.error('שגיאה')
     }
   }
 
@@ -171,19 +201,97 @@ export default function AdminPage() {
       <h1 className="text-2xl font-black mb-5">🛠 פאנל ניהול</h1>
 
       <div className="flex gap-2 mb-5">
-        {['matches', 'finished', 'special', 'users'].map(tab => (
+        {['groups', 'matches', 'finished', 'special', 'users'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-green-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
           >
-            {tab === 'matches' ? `⏳ ממתינים (${pendingMatches.length})`
+            {tab === 'groups' ? `🏷️ קבוצות (${groups.length})`
+              : tab === 'matches' ? `⏳ ממתינים (${pendingMatches.length})`
               : tab === 'finished' ? `✅ גמורים (${finishedMatches.length})`
               : tab === 'special' ? '⭐ מיוחדים'
               : `👥 משתמשים (${users.length})`}
           </button>
         ))}
       </div>
+
+      {activeTab === 'groups' && (
+        <div className="flex flex-col gap-4">
+          <div className="card flex gap-2">
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createGroup()}
+              placeholder="שם הקבוצה החדשה (למשל: חברים מהעבודה)"
+              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+            />
+            <button
+              onClick={createGroup}
+              disabled={creatingGroup || !newGroupName.trim()}
+              className="btn-primary"
+            >
+              {creatingGroup ? '...' : '+ צור קבוצה'}
+            </button>
+          </div>
+
+          {groups.length === 0 ? (
+            <div className="text-center py-8 text-white/30">אין קבוצות עדיין</div>
+          ) : (
+            <div className="card overflow-hidden p-0">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם הקבוצה</th>
+                    <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">קוד הצטרפות</th>
+                    <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">חברים</th>
+                    <th className="py-3 px-4"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map(g => (
+                    <tr key={g.id} className="border-b border-white/5 last:border-0">
+                      <td className="py-3 px-4 font-medium">{g.name}</td>
+                      <td className="py-3 px-4">
+                        <code
+                          className="bg-green-500/20 text-green-300 px-3 py-1 rounded-lg text-sm font-mono cursor-pointer hover:bg-green-500/30"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(g.code)
+                            toast.success('קוד הועתק!')
+                          }}
+                          title="לחץ להעתקה"
+                        >
+                          {g.code}
+                        </code>
+                      </td>
+                      <td className="py-3 px-4 text-center text-white/60">{g.member_count}</td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => deleteGroup(g.id)}
+                          className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
+                        >
+                          מחק
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="card text-sm text-white/50 bg-blue-500/5 border-blue-500/20">
+            <p className="font-medium text-white/70 mb-1">💡 איך זה עובד:</p>
+            <ul className="space-y-1">
+              <li>צור קבוצה לכל חוג חברים — עבודה, משפחה, חברים מהצבא...</li>
+              <li>שתף את קוד ההצטרפות עם החברים ← הם יצטרפו עם הקוד הזה</li>
+              <li>כל קבוצה רואה טבלת דירוג נפרדת משלה בדף הטבלה</li>
+              <li>הניחושים עצמם משותפים — כל משתמש מנחש פעם אחת</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {(activeTab === 'matches' || activeTab === 'finished') && (
         <div className="card overflow-hidden p-0">
