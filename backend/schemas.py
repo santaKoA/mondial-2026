@@ -62,6 +62,7 @@ class UserOut(BaseModel):
 class JoinRequest(BaseModel):
     name: str
     code: str
+    password: str
 
 
 class TokenResponse(BaseModel):
@@ -113,3 +114,4 @@ class GroupCreateIn(BaseModel):
 class GroupCreatePublicIn(BaseModel):
     user_name: str
     group_name: str
+    password: str

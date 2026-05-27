@@ -27,11 +27,15 @@ app.include_router(admin.router)
 def startup():
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE league_groups ADD COLUMN owner_id INTEGER REFERENCES users(id)"))
-            conn.commit()
-        except Exception:
-            pass  # column already exists
+        for ddl in [
+            "ALTER TABLE league_groups ADD COLUMN owner_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE users ADD COLUMN password_hash TEXT",
+        ]:
+            try:
+                conn.execute(text(ddl))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
     db = SessionLocal()
     try:
         seed_data.seed(db)

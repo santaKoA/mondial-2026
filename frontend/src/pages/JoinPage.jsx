@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../api'
@@ -9,20 +9,63 @@ export default function JoinPage() {
   const [name, setName] = useState('')
   const [groupName, setGroupName] = useState('')
   const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [createdGroup, setCreatedGroup] = useState(null)
-  const [pendingAuth, setPendingAuth] = useState(null) // {token, user} saved until user clicks continue
+  const [pendingAuth, setPendingAuth] = useState(null)
+  const [lastUser, setLastUser] = useState(null)
+  const [quickPassword, setQuickPassword] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('mondial_last_user')
+      if (stored) setLastUser(JSON.parse(stored))
+    } catch {
+      localStorage.removeItem('mondial_last_user')
+    }
+  }, [])
+
+  function clearLastUser() {
+    localStorage.removeItem('mondial_last_user')
+    setLastUser(null)
+  }
+
+  async function handleQuickLogin(e) {
+    e.preventDefault()
+    if (!quickPassword.trim()) return
+    setLoading(true)
+    try {
+      const { data } = await api.post('/api/auth/join', {
+        name: lastUser.name,
+        code: lastUser.groupCode,
+        password: quickPassword,
+      })
+      login(data.token, data.user, data.group?.code, data.group?.name)
+      toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
+      navigate('/')
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleCreate(e) {
     e.preventDefault()
-    if (!name.trim() || !groupName.trim()) return
+    if (!name.trim() || !groupName.trim() || !password.trim()) return
+    if (password !== confirmPassword) {
+      toast.error('הסיסמאות אינן תואמות')
+      return
+    }
     setLoading(true)
     try {
       const { data } = await api.post('/api/auth/create-group', {
         user_name: name.trim(),
         group_name: groupName.trim(),
+        password,
       })
       setPendingAuth({ token: data.token, user: data.user })
       setCreatedGroup(data.group)
@@ -35,11 +78,15 @@ export default function JoinPage() {
 
   async function handleJoin(e) {
     e.preventDefault()
-    if (!name.trim() || !code.trim()) return
+    if (!name.trim() || !code.trim() || !password.trim()) return
     setLoading(true)
     try {
-      const { data } = await api.post('/api/auth/join', { name: name.trim(), code: code.trim() })
-      login(data.token, data.user)
+      const { data } = await api.post('/api/auth/join', {
+        name: name.trim(),
+        code: code.trim(),
+        password,
+      })
+      login(data.token, data.user, data.group?.code, data.group?.name)
       toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
       navigate('/')
     } catch (e) {
@@ -53,6 +100,8 @@ export default function JoinPage() {
     navigator.clipboard?.writeText(createdGroup.code)
     toast.success('קוד הועתק ללוח!')
   }
+
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
 
   // Step 3: Group created — show code
   if (createdGroup) {
@@ -86,7 +135,10 @@ export default function JoinPage() {
           </div>
 
           <button
-            onClick={() => { login(pendingAuth.token, pendingAuth.user); navigate('/') }}
+            onClick={() => {
+              login(pendingAuth.token, pendingAuth.user, createdGroup.code, createdGroup.name)
+              navigate('/')
+            }}
             className="btn-primary w-full py-3"
           >
             המשך לניחושים ⚽
@@ -105,6 +157,45 @@ export default function JoinPage() {
           <h1 className="text-3xl font-black text-white">מונדיאל 2026</h1>
           <p className="text-white/50 mt-0.5 text-sm">ניחושים ותחרות חברים</p>
         </div>
+
+        {/* Quick re-login card */}
+        {lastUser && !mode && (
+          <div className="card mb-3 border-green-500/30">
+            <p className="text-white/50 text-xs mb-3">כניסה מהירה</p>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center text-green-300 font-bold text-sm flex-shrink-0">
+                {lastUser.name.charAt(0)}
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-sm">{lastUser.name}</p>
+                <p className="text-white/40 text-xs">{lastUser.groupName}</p>
+              </div>
+            </div>
+            <form onSubmit={handleQuickLogin} className="flex flex-col gap-2">
+              <input
+                type="password"
+                value={quickPassword}
+                onChange={e => setQuickPassword(e.target.value)}
+                placeholder="סיסמה"
+                className={inputClass}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={loading || !quickPassword.trim()}
+                className="btn-primary w-full py-2.5 text-sm"
+              >
+                {loading ? '...' : 'כניסה'}
+              </button>
+            </form>
+            <button
+              onClick={clearLastUser}
+              className="text-white/30 hover:text-white/60 text-xs mt-2 w-full text-center transition-colors"
+            >
+              לא אתה?
+            </button>
+          </div>
+        )}
 
         {/* Mode picker */}
         {!mode && (
@@ -162,7 +253,7 @@ export default function JoinPage() {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="איך קוראים לך?"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+                  className={inputClass}
                   maxLength={30}
                   autoFocus
                 />
@@ -174,13 +265,33 @@ export default function JoinPage() {
                   value={groupName}
                   onChange={e => setGroupName(e.target.value)}
                   placeholder='למשל: "חברים מהעבודה"'
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+                  className={inputClass}
                   maxLength={40}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">סיסמה</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="בחר סיסמה"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">אימות סיסמה</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="הכנס סיסמה שוב"
+                  className={inputClass}
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || !name.trim() || !groupName.trim()}
+                disabled={loading || !name.trim() || !groupName.trim() || !password.trim() || !confirmPassword.trim()}
                 className="btn-primary w-full py-3 text-base"
               >
                 {loading ? '...' : 'צור קבוצה וקבל קוד שיתוף'}
@@ -204,7 +315,7 @@ export default function JoinPage() {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="איך קוראים לך?"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+                  className={inputClass}
                   maxLength={30}
                   autoFocus
                 />
@@ -216,12 +327,22 @@ export default function JoinPage() {
                   value={code}
                   onChange={e => setCode(e.target.value)}
                   placeholder="הקוד שקיבלת מהחבר"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-1.5">סיסמה</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="הכנס סיסמה"
+                  className={inputClass}
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || !name.trim() || !code.trim()}
+                disabled={loading || !name.trim() || !code.trim() || !password.trim()}
                 className="btn-primary w-full py-3 text-base"
               >
                 {loading ? '...' : 'הצטרף לתחרות'}

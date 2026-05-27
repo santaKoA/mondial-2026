@@ -6,9 +6,27 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
+import hashlib
+import os
 import models
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def hash_password(password: str) -> str:
+    salt = os.urandom(32)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    return salt.hex() + ':' + key.hex()
+
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        salt_hex, key_hex = stored.split(':')
+        salt = bytes.fromhex(salt_hex)
+        key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+        return key.hex() == key_hex
+    except Exception:
+        return False
 
 
 def create_token(user_id: int, name: str, is_admin: bool) -> str:
