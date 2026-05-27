@@ -44,6 +44,14 @@ def _enrich_match(match: models.Match, user: Optional[models.User], db: Session)
     )
 
 
+@router.get("/teams", response_model=list[schemas.TeamOut])
+def list_teams(
+    _: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(models.Team).order_by(models.Team.name).all()
+
+
 @router.get("", response_model=list[schemas.MatchOut])
 def list_matches(
     stage: Optional[str] = None,

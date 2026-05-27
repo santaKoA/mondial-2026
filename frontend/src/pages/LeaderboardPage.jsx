@@ -15,7 +15,18 @@ export default function LeaderboardPage() {
   const [creating, setCreating] = useState(false)
   const [newGroup, setNewGroup] = useState(null)
   const [removing, setRemoving] = useState(null)
+  const [teamFlags, setTeamFlags] = useState({})
   const { user: me } = useAuth()
+
+  useEffect(() => {
+    api.get('/api/matches/teams')
+      .then(r => {
+        const map = {}
+        r.data.forEach(t => { map[t.name] = t.flag })
+        setTeamFlags(map)
+      })
+      .catch(() => {})
+  }, [])
 
   const activeGroup = groups.find(g => g.id === activeGroupId)
   const isOwner = activeGroup?.owner_id === me?.id
@@ -187,8 +198,10 @@ export default function LeaderboardPage() {
                   <td className="py-3 px-2 text-center text-sm font-bold text-yellow-400">
                     {user.direction_count > 0 ? user.direction_count : <span className="text-white/20 font-normal">0</span>}
                   </td>
-                  <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
-                    {user.winner_pick || <span className="text-white/20">—</span>}
+                  <td className="py-3 px-2 text-center">
+                    {user.winner_pick
+                      ? <span className="text-xl" title={user.winner_pick}>{teamFlags[user.winner_pick] || user.winner_pick}</span>
+                      : <span className="text-white/20">—</span>}
                   </td>
                   <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
                     {user.top_scorer_pick || <span className="text-white/20">—</span>}
