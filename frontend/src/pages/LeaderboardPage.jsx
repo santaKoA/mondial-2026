@@ -150,8 +150,8 @@ export default function LeaderboardPage() {
       {loading ? (
         <div className="text-center py-12 text-white/40">טוען...</div>
       ) : (
-        <div className="card overflow-hidden p-0">
-          <table className="w-full">
+        <div className="card overflow-hidden p-0 overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">#</th>

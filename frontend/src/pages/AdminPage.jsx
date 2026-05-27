@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
-import { he } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import api from '../api'
+
+function formatIsrael(str) {
+  const d = str && !str.endsWith('Z') && !str.includes('+') ? new Date(str + 'Z') : new Date(str)
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  }).format(d).replace(',', '')
+}
 
 const STAGE_LABELS = {
   group: 'שלב הבתים',
@@ -55,7 +63,7 @@ function MatchResultRow({ match, teams, onSaved }) {
   return (
     <tr className="border-b border-white/5 last:border-0">
       <td className="py-3 px-4 text-sm text-white/50">
-        {format(new Date(match.scheduled_at), 'dd/MM HH:mm', { locale: he })}
+        {formatIsrael(match.scheduled_at)}
         <div className="text-xs">{STAGE_LABELS[match.stage]}{match.group_name && ` · ${match.group_name}`}</div>
       </td>
       <td className="py-3 px-4 text-sm">
@@ -320,12 +328,12 @@ export default function AdminPage() {
               value={specialType}
               onChange={e => {
                 setSpecialType(e.target.value)
-                setSpecialPoints(e.target.value === 'winner' ? 15 : 10)
+                setSpecialPoints(15)
               }}
               className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
             >
               <option value="winner">🏆 זוכה המונדיאל (15 נק׳)</option>
-              <option value="top_scorer">⚽ מלך השערים (10 נק׳)</option>
+              <option value="top_scorer">⚽ מלך השערים (15 נק׳)</option>
             </select>
             <input
               type="text"

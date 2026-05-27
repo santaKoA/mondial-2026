@@ -217,7 +217,6 @@ export default function JoinPage() {
                   onChange={e => setCode(e.target.value)}
                   placeholder="הקוד שקיבלת מהחבר"
                   className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
-                  dir="ltr"
                 />
               </div>
               <button
