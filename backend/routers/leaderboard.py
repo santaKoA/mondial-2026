@@ -14,6 +14,8 @@ def _build_leaderboard(users: list[models.User]) -> list[schemas.UserOut]:
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
         special_pts = sum(s.points for s in user.special_predictions)
+        winner_pick = next((s.value for s in user.special_predictions if s.prediction_type == "winner"), None)
+        top_scorer_pick = next((s.value for s in user.special_predictions if s.prediction_type == "top_scorer"), None)
         result.append(
             schemas.UserOut(
                 id=user.id,
@@ -21,6 +23,8 @@ def _build_leaderboard(users: list[models.User]) -> list[schemas.UserOut]:
                 is_admin=user.is_admin,
                 total_points=match_pts + special_pts,
                 prediction_count=len(user.predictions),
+                winner_pick=winner_pick,
+                top_scorer_pick=top_scorer_pick,
             )
         )
     result.sort(key=lambda u: (-u.total_points, u.name))

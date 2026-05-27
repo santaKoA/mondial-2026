@@ -51,6 +51,8 @@ class UserOut(BaseModel):
     is_admin: bool
     total_points: int = 0
     prediction_count: int = 0
+    winner_pick: Optional[str] = None
+    top_scorer_pick: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

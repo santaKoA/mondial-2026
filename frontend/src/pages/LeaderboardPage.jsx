@@ -156,7 +156,8 @@ export default function LeaderboardPage() {
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">#</th>
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">שם</th>
-                <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">ניחושים</th>
+                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">🏆 זוכה</th>
+                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">⚽ מלך שערים</th>
                 <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">נקודות</th>
                 {isOwner && <th className="py-3 px-2"></th>}
               </tr>
@@ -178,7 +179,12 @@ export default function LeaderboardPage() {
                     </span>
                     {user.id === me?.id && <span className="text-xs text-green-400/60 mr-1">(אני)</span>}
                   </td>
-                  <td className="py-3 px-4 text-center text-white/60 text-sm">{user.prediction_count}</td>
+                  <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
+                    {user.winner_pick || <span className="text-white/20">—</span>}
+                  </td>
+                  <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
+                    {user.top_scorer_pick || <span className="text-white/20">—</span>}
+                  </td>
                   <td className="py-3 px-4 text-center">
                     <span className={`font-black text-lg ${
                       idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-white/80' : idx === 2 ? 'text-orange-400' : 'text-white'
