@@ -9,7 +9,8 @@ export default function CountdownTimer({ scheduledAt, onExpired }) {
 
   useEffect(() => {
     function tick() {
-      const target = new Date(scheduledAt).getTime() - 5 * 60 * 1000
+      const raw = scheduledAt && !scheduledAt.endsWith('Z') && !scheduledAt.includes('+') ? scheduledAt + 'Z' : scheduledAt
+      const target = new Date(raw).getTime() - 5 * 60 * 1000
       const now = Date.now()
       const remaining = target - now
       if (remaining <= 0) {

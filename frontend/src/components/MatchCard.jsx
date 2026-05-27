@@ -1,9 +1,25 @@
 import { useState, useCallback } from 'react'
-import { format } from 'date-fns'
-import { he } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import api from '../api'
 import CountdownTimer from './CountdownTimer'
+
+function parseUtc(str) {
+  // ensure the string is treated as UTC (append Z if no tz offset)
+  if (str && !str.endsWith('Z') && !str.includes('+')) return new Date(str + 'Z')
+  return new Date(str)
+}
+
+function formatIsrael(str) {
+  const d = parseUtc(str)
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d).replace(',', '')
+}
 
 const STAGE_LABELS = {
   group: 'שלב הבתים',
@@ -54,7 +70,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
   const [closed, setClosed] = useState(false)
 
   const isClosed = closed || match.status === 'finished' || (() => {
-    const cutoff = new Date(match.scheduled_at).getTime() - 5 * 60 * 1000
+    const cutoff = parseUtc(match.scheduled_at).getTime() - 5 * 60 * 1000
     return Date.now() >= cutoff
   })()
 
@@ -110,12 +126,12 @@ export default function MatchCard({ match, onPredictionSaved }) {
           )}
           {isFinished && (
             <span className="text-xs text-white/40">
-              {format(new Date(match.scheduled_at), 'dd/MM HH:mm', { locale: he })}
+              {formatIsrael(match.scheduled_at)}
             </span>
           )}
           {!isFinished && !isClosed && (
             <span className="text-xs text-white/40">
-              {format(new Date(match.scheduled_at), 'dd/MM HH:mm', { locale: he })}
+              {formatIsrael(match.scheduled_at)}
             </span>
           )}
         </div>
