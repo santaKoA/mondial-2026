@@ -100,8 +100,8 @@ export default function JoinPage() {
     <div className="min-h-[90vh] flex items-center justify-center">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-7xl mb-3">⚽</div>
+        <div className="text-center mb-4">
+          <div className="text-6xl mb-2">⚽</div>
           <h1 className="text-3xl font-black text-white">מונדיאל 2026</h1>
           <p className="text-white/50 mt-1">ניחושים ותחרות חברים</p>
         </div>

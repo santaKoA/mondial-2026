@@ -18,20 +18,41 @@ const GROUP_LABELS = {
   I: 'ט', J: 'י', K: 'כ', L: 'ל',
 }
 
+function toUtcDate(str) {
+  if (str && !str.endsWith('Z') && !str.includes('+')) return new Date(str + 'Z')
+  return new Date(str)
+}
+
+function israelDateStr(date) {
+  return new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
+function todayIsrael() {
+  return israelDateStr(new Date())
+}
+
 export default function MatchesPage() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState('group')
+  const [activeStage, setActiveStage] = useState('today')
   const [activeGroup, setActiveGroup] = useState(null)
 
   const loadMatches = useCallback(async () => {
     try {
       const { data } = await api.get('/api/matches')
-      setMatches(data)
-      const firstUpcoming = data.find(m => m.status === 'upcoming')
-      if (firstUpcoming) {
-        setActiveStage(firstUpcoming.stage)
-        if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
+      const sorted = [...data].sort((a, b) => toUtcDate(a.scheduled_at) - toUtcDate(b.scheduled_at))
+      setMatches(sorted)
+      // keep 'today' as default; only switch if no matches today
+      const today = todayIsrael()
+      const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
+      if (!hasTodayMatches) {
+        const firstUpcoming = sorted.find(m => m.status === 'upcoming')
+        if (firstUpcoming) {
+          setActiveStage(firstUpcoming.stage)
+          if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
+        } else {
+          setActiveStage('group')
+        }
       }
     } catch {
       // ignore
@@ -46,12 +67,16 @@ export default function MatchesPage() {
     (a, b) => STAGE_ORDER.indexOf(a) - STAGE_ORDER.indexOf(b)
   )
 
+  const todayMatches = matches.filter(m => israelDateStr(toUtcDate(m.scheduled_at)) === todayIsrael())
+
   const filteredByStage = matches.filter(m => m.stage === activeStage)
   const groups = [...new Set(filteredByStage.map(m => m.group_name).filter(Boolean))].sort()
 
-  const displayed = activeStage === 'group' && activeGroup
-    ? filteredByStage.filter(m => m.group_name === activeGroup)
-    : filteredByStage
+  const displayed = activeStage === 'today'
+    ? todayMatches
+    : activeStage === 'group' && activeGroup
+      ? filteredByStage.filter(m => m.group_name === activeGroup)
+      : filteredByStage
 
   useEffect(() => {
     if (activeStage === 'group' && groups.length > 0 && !groups.includes(activeGroup)) {
@@ -69,6 +94,16 @@ export default function MatchesPage() {
 
       {/* Stage tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        <button
+          onClick={() => setActiveStage('today')}
+          className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            activeStage === 'today'
+              ? 'bg-green-500 text-black'
+              : 'bg-white/10 text-white/70 hover:bg-white/20'
+          }`}
+        >
+          📅 היום
+        </button>
         {stages.map(stage => (
           <button
             key={stage}
@@ -104,7 +139,9 @@ export default function MatchesPage() {
       )}
 
       {displayed.length === 0 ? (
-        <div className="text-center py-12 text-white/30">אין משחקים בשלב זה</div>
+        <div className="text-center py-12 text-white/30">
+          {activeStage === 'today' ? 'אין משחקים היום' : 'אין משחקים בשלב זה'}
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {displayed.map(match => (
