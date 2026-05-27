@@ -94,21 +94,36 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {groups.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-          {groups.map(g => (
-            <button
+      {groups.length > 0 && (
+        <div className="mb-4">
+          {groups.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-2">
+              {groups.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => setActiveGroupId(g.id)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    activeGroupId === g.id
+                      ? 'bg-green-500 text-black'
+                      : 'bg-white/10 text-white/70 hover:bg-white/20'
+                  }`}
+                >
+                  {g.name}
+                  <span className="mr-1.5 text-xs opacity-60">({g.member_count})</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {groups.filter(g => g.id === activeGroupId).map(g => (
+            <div
               key={g.id}
-              onClick={() => setActiveGroupId(g.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                activeGroupId === g.id
-                  ? 'bg-green-500 text-black'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-              }`}
+              className="flex items-center gap-2 text-sm text-white/50 cursor-pointer hover:text-white/80 transition-colors"
+              onClick={() => { navigator.clipboard?.writeText(g.code); toast.success('קוד הועתק!') }}
             >
-              {g.name}
-              <span className="mr-1.5 text-xs opacity-60">({g.member_count})</span>
-            </button>
+              <span>קוד הצטרפות לקבוצה "{g.name}":</span>
+              <code className="text-green-300 font-mono font-bold tracking-wider">{g.code}</code>
+              <span className="text-xs text-white/30">📋 לחץ להעתקה</span>
+            </div>
           ))}
         </div>
       )}
