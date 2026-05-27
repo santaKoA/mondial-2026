@@ -97,8 +97,8 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="min-h-[90vh] flex items-center justify-center">
-      <div className="w-full max-w-sm">
+    <div className="pt-8">
+      <div className="w-full max-w-sm mx-auto">
         {/* Logo */}
         <div className="text-center mb-3">
           <div className="text-5xl mb-1">⚽</div>
