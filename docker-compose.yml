@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: mondial-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - mondial-data:/app/data
+    environment:
+      - GROUP_CODE=${GROUP_CODE:-mondial2026}
+      - ADMIN_CODE=${ADMIN_CODE:-admin2026}
+      - SECRET_KEY=${SECRET_KEY:-change-this-secret-in-production}
+      - DATABASE_URL=sqlite:////app/data/mondial.db
+      - TOURNAMENT_START=${TOURNAMENT_START:-2026-06-11T17:00:00}
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: mondial-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mondial-data:
