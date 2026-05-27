@@ -53,14 +53,17 @@ class Match(Base):
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
     password_hash = Column(String, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
+    group_id = Column(Integer, ForeignKey("league_groups.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     predictions = relationship("Prediction", back_populates="user")
     special_predictions = relationship("SpecialPrediction", back_populates="user")
     groups = relationship("UserGroup", back_populates="user")
+
+    __table_args__ = (UniqueConstraint("name", "group_id"),)
 
 
 class Prediction(Base):

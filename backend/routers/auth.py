@@ -37,13 +37,15 @@ def _add_to_group(user: models.User, group: models.Group, db: Session):
         db.add(models.UserGroup(user_id=user.id, group_id=group.id))
 
 
-def _get_or_create_user(name: str, password: str, is_admin: bool, db: Session) -> models.User:
+def _get_or_create_user(name: str, password: str, group: models.Group, is_admin: bool, db: Session) -> models.User:
     if not password:
         raise HTTPException(status_code=400, detail="סיסמה נדרשת")
-    user = db.query(models.User).filter(models.User.name == name).first()
+    user = db.query(models.User).filter(
+        models.User.name == name,
+        models.User.group_id == group.id,
+    ).first()
     if user:
         if user.password_hash is None:
-            # existing user without password (migration) — set password on first login
             user.password_hash = hash_password(password)
         elif not verify_password(password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="סיסמה שגויה")
@@ -51,7 +53,7 @@ def _get_or_create_user(name: str, password: str, is_admin: bool, db: Session) -
             user.is_admin = True
         db.flush()
     else:
-        user = models.User(name=name, is_admin=is_admin, password_hash=hash_password(password))
+        user = models.User(name=name, is_admin=is_admin, password_hash=hash_password(password), group_id=group.id)
         db.add(user)
         db.flush()
     return user
@@ -74,9 +76,8 @@ def join(body: schemas.JoinRequest, db: Session = Depends(get_db)):
         if not group:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="קוד שגוי — בדוק שהקוד נכון")
 
-    user = _get_or_create_user(name, body.password, is_admin, db)
-    if group:
-        _add_to_group(user, group, db)
+    user = _get_or_create_user(name, body.password, group, is_admin, db)
+    _add_to_group(user, group, db)
 
     db.commit()
     db.refresh(user)
@@ -93,10 +94,12 @@ def create_group_and_join(body: schemas.GroupCreatePublicIn, db: Session = Depen
     if not user_name or not group_name:
         raise HTTPException(status_code=400, detail="יש למלא שם וקוד")
 
-    user = _get_or_create_user(user_name, body.password, False, db)
     code = secrets.token_urlsafe(6)
-    group = models.Group(name=group_name, code=code, owner_id=user.id)
+    group = models.Group(name=group_name, code=code, owner_id=None)
     db.add(group)
+    db.flush()
+    user = _get_or_create_user(user_name, body.password, group, False, db)
+    group.owner_id = user.id
     db.flush()
     _add_to_group(user, group, db)
 
