@@ -66,6 +66,16 @@ def startup():
     db = SessionLocal()
     try:
         seed_data.seed(db)
+        # Migrate from 2022 placeholder data to real 2026 schedule:
+        # Qatar was in Group A in the old seed; in 2026 it's in Group B.
+        import models as _m
+        if db.query(_m.Team).filter_by(name="קטאר", group_name="A").first():
+            db.query(_m.SpecialPrediction).delete()
+            db.query(_m.Prediction).delete()
+            db.query(_m.Match).delete()
+            db.query(_m.Team).delete()
+            db.commit()
+            seed_data.seed(db)
     finally:
         db.close()
 
