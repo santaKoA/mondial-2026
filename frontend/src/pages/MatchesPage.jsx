@@ -15,7 +15,7 @@ const STAGE_LABELS = {
 
 const GROUP_LABELS = {
   A: 'א', B: 'ב', C: 'ג', D: 'ד', E: 'ה', F: 'ו', G: 'ז', H: 'ח',
-  I: 'ט', J: 'י', K: 'כ', L: 'ל',
+  I: 'ט', J: 'י', K: 'יא', L: 'יב',
 }
 
 function toUtcDate(str) {
