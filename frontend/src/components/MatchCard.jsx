@@ -240,9 +240,9 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
       )}
 
-      {isClosed && !isKickedOff && (
+      {!isKickedOff && !isFinished && (
         <div className="mt-3 border-t border-white/10 pt-2 text-center">
-          <span className="text-xs text-white/25">ניחושי הקבוצה ייחשפו בתחילת המשחק</span>
+          <span className="text-xs text-white/25">👥 ניחושי הקבוצה ייחשפו בתחילת המשחק</span>
         </div>
       )}
 
