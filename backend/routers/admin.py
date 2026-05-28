@@ -150,6 +150,28 @@ def sync_status(_: models.User = Depends(auth_utils.get_admin_user)):
     }
 
 
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_admin: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_admin:
+        raise HTTPException(status_code=403, detail="לא ניתן למחוק אדמין")
+    if user.id == current_admin.id:
+        raise HTTPException(status_code=403, detail="לא ניתן למחוק את עצמך")
+    db.query(models.Prediction).filter(models.Prediction.user_id == user_id).delete()
+    db.query(models.SpecialPrediction).filter(models.SpecialPrediction.user_id == user_id).delete()
+    db.query(models.UserGroup).filter(models.UserGroup.user_id == user_id).delete()
+    db.query(models.Group).filter(models.Group.owner_id == user_id).update({"owner_id": None})
+    db.delete(user)
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/groups/{group_id}")
 def delete_group(
     group_id: int,

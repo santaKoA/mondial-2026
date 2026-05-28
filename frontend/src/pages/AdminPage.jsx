@@ -140,6 +140,7 @@ export default function AdminPage() {
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [syncStatus, setSyncStatus] = useState(null)
   const [syncing, setSyncing] = useState(false)
+  const [deletingUser, setDeletingUser] = useState(null)
 
   async function loadData() {
     try {
@@ -191,6 +192,19 @@ export default function AdminPage() {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
       setCreatingGroup(false)
+    }
+  }
+
+  async function handleDeleteUser(id) {
+    setDeletingUser(id)
+    try {
+      await api.delete(`/api/admin/users/${id}`)
+      setUsers(prev => prev.filter(u => u.id !== id))
+      toast.success('משתמש נמחק')
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setDeletingUser(null)
     }
   }
 
@@ -420,6 +434,7 @@ export default function AdminPage() {
                 <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם</th>
                 <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">ניחושים</th>
                 <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">נקודות</th>
+                <th className="py-3 px-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -431,6 +446,17 @@ export default function AdminPage() {
                   </td>
                   <td className="py-3 px-4 text-center text-white/60 text-sm">{u.prediction_count}</td>
                   <td className="py-3 px-4 text-center font-bold">{u.total_points}</td>
+                  <td className="py-3 px-2 text-center">
+                    {!u.is_admin && (
+                      <button
+                        onClick={() => handleDeleteUser(u.id)}
+                        disabled={deletingUser === u.id}
+                        className="text-red-400/50 hover:text-red-400 text-xs transition-colors disabled:opacity-30"
+                      >
+                        {deletingUser === u.id ? '...' : 'מחק'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
