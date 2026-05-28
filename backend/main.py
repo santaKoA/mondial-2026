@@ -1,11 +1,22 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from database import Base, engine, SessionLocal
 from routers import auth, matches, predictions, leaderboard, special_predictions, admin
+from services import results_sync
 import seed_data
 
-app = FastAPI(title="Mundial 2026 Predictions")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(results_sync.polling_loop())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="Mundial 2026 Predictions", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +34,7 @@ app.include_router(special_predictions.router)
 app.include_router(admin.router)
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # noqa: deprecation — kept alongside lifespan for DB migration
 def startup():
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:

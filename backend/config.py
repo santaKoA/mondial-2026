@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     TOURNAMENT_START: str = "2026-06-11T17:00:00"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 90
+    FOOTBALL_API_KEY: str = ""
 
     model_config = {"env_file": ".env"}
 

@@ -6,6 +6,7 @@ import models
 import schemas
 import auth as auth_utils
 import scoring
+from services import results_sync
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -131,6 +132,22 @@ def create_group(
     db.commit()
     db.refresh(group)
     return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=0)
+
+
+@router.post("/sync")
+async def manual_sync(_: models.User = Depends(auth_utils.get_admin_user)):
+    result = await results_sync.sync_results()
+    return result
+
+
+@router.get("/sync/status")
+def sync_status(_: models.User = Depends(auth_utils.get_admin_user)):
+    return {
+        "last_sync_at": results_sync.last_sync_at.isoformat() if results_sync.last_sync_at else None,
+        "last_updated": results_sync.last_sync_updated,
+        "error": results_sync.last_sync_error,
+        "api_configured": bool(results_sync.settings.FOOTBALL_API_KEY),
+    }
 
 
 @router.delete("/groups/{group_id}")
