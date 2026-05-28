@@ -32,6 +32,6 @@
   }
 
   .score-input {
-    @apply w-14 h-14 text-center text-2xl font-bold bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-400 text-white;
+    @apply w-10 h-10 sm:w-14 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-400 text-white;
   }
 }

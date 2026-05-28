@@ -35,7 +35,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-pitch-900">
       {user && <Header />}
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6 pb-28 sm:pb-8">
         <Routes>
           <Route path="/join" element={user ? <Navigate to="/" replace /> : <JoinPage />} />
           <Route path="/" element={<PrivateRoute><MatchesPage /></PrivateRoute>} />

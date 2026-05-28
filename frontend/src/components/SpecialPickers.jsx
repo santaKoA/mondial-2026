@@ -25,7 +25,7 @@ function PlayerPhoto({ apiId, flag, name }) {
 export function TeamPicker({ value, onChange, disabled }) {
   return (
     <div className="max-h-60 overflow-y-auto rounded-lg">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {WC_TEAMS.map(t => (
           <button
             key={t.name}

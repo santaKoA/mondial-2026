@@ -230,7 +230,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h1 className="text-2xl font-black">🛠 פאנל ניהול</h1>
         <div className="flex items-center gap-3">
           {syncStatus && (
@@ -255,12 +255,12 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
         {['groups', 'matches', 'finished', 'special', 'users'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-green-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${activeTab === tab ? 'bg-green-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
           >
             {tab === 'groups' ? `🏷️ קבוצות (${groups.length})`
               : tab === 'matches' ? `⏳ ממתינים (${pendingMatches.length})`
@@ -294,8 +294,8 @@ export default function AdminPage() {
           {groups.length === 0 ? (
             <div className="text-center py-8 text-white/30">אין קבוצות עדיין</div>
           ) : (
-            <div className="card overflow-hidden p-0">
-              <table className="w-full">
+            <div className="card overflow-hidden p-0 overflow-x-auto">
+              <table className="w-full min-w-[380px]">
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם הקבוצה</th>
@@ -349,8 +349,8 @@ export default function AdminPage() {
       )}
 
       {(activeTab === 'matches' || activeTab === 'finished') && (
-        <div className="card overflow-hidden p-0">
-          <table className="w-full">
+        <div className="card overflow-hidden p-0 overflow-x-auto">
+          <table className="w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">תאריך</th>
@@ -413,8 +413,8 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'users' && (
-        <div className="card overflow-hidden p-0">
-          <table className="w-full">
+        <div className="card overflow-hidden p-0 overflow-x-auto">
+          <table className="w-full min-w-[280px]">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם</th>
