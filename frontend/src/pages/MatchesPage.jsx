@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../api'
 import MatchCard from '../components/MatchCard'
 
@@ -36,22 +36,25 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [activeStage, setActiveStage] = useState('today')
   const [activeGroup, setActiveGroup] = useState(null)
+  const initializedRef = useRef(false)
 
   const loadMatches = useCallback(async () => {
     try {
       const { data } = await api.get('/api/matches')
       const sorted = [...data].sort((a, b) => toUtcDate(a.scheduled_at) - toUtcDate(b.scheduled_at))
       setMatches(sorted)
-      // keep 'today' as default; only switch if no matches today
-      const today = todayIsrael()
-      const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
-      if (!hasTodayMatches) {
-        const firstUpcoming = sorted.find(m => m.status === 'upcoming')
-        if (firstUpcoming) {
-          setActiveStage(firstUpcoming.stage)
-          if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
-        } else {
-          setActiveStage('group')
+      if (!initializedRef.current) {
+        initializedRef.current = true
+        const today = todayIsrael()
+        const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
+        if (!hasTodayMatches) {
+          const firstUpcoming = sorted.find(m => m.status === 'upcoming')
+          if (firstUpcoming) {
+            setActiveStage(firstUpcoming.stage)
+            if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
+          } else {
+            setActiveStage('group')
+          }
         }
       }
     } catch {

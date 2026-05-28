@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { WC_TEAMS, WC_PLAYERS } from '../data/worldcup.js'
 
 const KNOWN_PLAYERS = WC_PLAYERS.filter(p => p.name !== 'אחר')
@@ -51,6 +51,13 @@ export function PlayerPicker({ value, onChange, disabled }) {
   const isCustom = value && !KNOWN_PLAYERS.find(p => p.name === value)
   const [showOther, setShowOther] = useState(isCustom || false)
   const [customText, setCustomText] = useState(isCustom ? value : '')
+
+  useEffect(() => {
+    if (!value) {
+      setShowOther(false)
+      setCustomText('')
+    }
+  }, [value])
 
   function handleSelect(player) {
     if (player.name === 'אחר') {

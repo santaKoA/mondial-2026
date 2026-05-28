@@ -156,6 +156,8 @@ export default function AdminPage() {
       setUsers(uRes.data)
       setGroups(gRes.data)
       setSyncStatus(sRes.data)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה בטעינת נתוני הניהול')
     } finally {
       setLoading(false)
     }
