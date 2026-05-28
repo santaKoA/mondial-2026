@@ -20,7 +20,7 @@ def _build_leaderboard(users: list[models.User], reveal_special: bool = True) ->
     result = []
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
-        special_pts = sum(s.points for s in user.special_predictions)
+        special_pts = sum(s.points or 0 for s in user.special_predictions)
         winner_pick = next((s.value for s in user.special_predictions if s.prediction_type == "winner"), None)
         top_scorer_pick = next((s.value for s in user.special_predictions if s.prediction_type == "top_scorer"), None)
         exact_count = 0

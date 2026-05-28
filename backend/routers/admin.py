@@ -86,7 +86,7 @@ def list_users(
     result = []
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
-        special_pts = sum(s.points for s in user.special_predictions)
+        special_pts = sum(s.points or 0 for s in user.special_predictions)
         result.append(
             schemas.UserOut(
                 id=user.id,
@@ -131,7 +131,7 @@ def create_group(
     db.add(group)
     db.commit()
     db.refresh(group)
-    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=0)
+    return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=0, owner_id=group.owner_id)
 
 
 @router.post("/sync")
