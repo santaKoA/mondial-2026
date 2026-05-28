@@ -68,30 +68,40 @@ def group_predictions(
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
 
-    cutoff = match.scheduled_at.replace(tzinfo=timezone.utc) - timedelta(minutes=CUTOFF_MINUTES)
-    if datetime.now(timezone.utc) < cutoff:
+    # Reveal only after the match has actually kicked off (not just locked)
+    kickoff = match.scheduled_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) < kickoff:
         raise HTTPException(status_code=403, detail="ניחושים יוצגו לאחר תחילת המשחק")
 
-    group_id = current_user.group_id
-    if not group_id:
+    # Collect all groups the current user belongs to
+    user_group_ids = [
+        ug.group_id for ug in
+        db.query(models.UserGroup).filter(models.UserGroup.user_id == current_user.id).all()
+    ]
+    if not user_group_ids:
         return []
 
-    group_user_ids = [
-        ug.user_id for ug in
-        db.query(models.UserGroup).filter(models.UserGroup.group_id == group_id).all()
-    ]
-    group_users = {u.id: u.name for u in db.query(models.User).filter(models.User.id.in_(group_user_ids)).all()}
+    # Collect all unique member IDs across all those groups
+    all_member_ids = set()
+    for gid in user_group_ids:
+        for ug in db.query(models.UserGroup).filter(models.UserGroup.group_id == gid).all():
+            all_member_ids.add(ug.user_id)
+
+    all_users = {
+        u.id: u.name
+        for u in db.query(models.User).filter(models.User.id.in_(all_member_ids)).all()
+    }
 
     pred_map = {
         p.user_id: p for p in
         db.query(models.Prediction).filter(
             models.Prediction.match_id == match_id,
-            models.Prediction.user_id.in_(group_user_ids),
+            models.Prediction.user_id.in_(all_member_ids),
         ).all()
     }
 
     result = []
-    for uid, uname in group_users.items():
+    for uid, uname in all_users.items():
         p = pred_map.get(uid)
         result.append(schemas.GroupPredictionOut(
             user_name=uname,

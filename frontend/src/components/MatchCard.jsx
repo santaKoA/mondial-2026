@@ -76,6 +76,10 @@ export default function MatchCard({ match, onPredictionSaved }) {
     return Date.now() >= cutoff
   })()
 
+  // Group predictions are revealed only after the match has actually kicked off
+  const isKickedOff = match.status === 'finished' ||
+    Date.now() >= parseUtc(match.scheduled_at).getTime()
+
   const handleExpired = useCallback(() => setClosed(true), [])
 
   async function toggleGroupPreds() {
@@ -236,7 +240,13 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
       )}
 
-      {isClosed && (
+      {isClosed && !isKickedOff && (
+        <div className="mt-3 border-t border-white/10 pt-2 text-center">
+          <span className="text-xs text-white/25">ניחושי הקבוצה ייחשפו בתחילת המשחק</span>
+        </div>
+      )}
+
+      {isKickedOff && (
         <div className="mt-3 border-t border-white/10 pt-2">
           <button
             onClick={toggleGroupPreds}
