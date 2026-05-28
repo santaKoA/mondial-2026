@@ -128,6 +128,26 @@ def create_additional_group(
     return schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count, owner_id=group.owner_id)
 
 
+@router.post("/join-group", response_model=schemas.GroupOut)
+def join_existing_group(
+    body: schemas.JoinGroupByCodeIn,
+    current_user: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = db.query(models.Group).filter(models.Group.code == body.code.strip()).first()
+    if not group:
+        raise HTTPException(status_code=400, detail="קוד שגוי — בדוק שהקוד נכון")
+    already = db.query(models.UserGroup).filter(
+        models.UserGroup.user_id == current_user.id,
+        models.UserGroup.group_id == group.id,
+    ).first()
+    if already:
+        raise HTTPException(status_code=400, detail="כבר חבר בקבוצה זו")
+    _add_to_group(current_user, group, db)
+    db.commit()
+    return _group_to_out(group, db)
+
+
 @router.get("/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(auth_utils.get_current_user), db: Session = Depends(get_db)):
     return _user_to_out(current_user, db)

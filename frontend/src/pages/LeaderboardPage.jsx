@@ -1,53 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
-export default function LeaderboardPage() {
-  const [users, setUsers] = useState([])
-  const [groups, setGroups] = useState([])
-  const [activeGroupId, setActiveGroupId] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showCreate, setShowCreate] = useState(false)
-  const [newGroupName, setNewGroupName] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [newGroup, setNewGroup] = useState(null)
+function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
+  const [users, setUsers] = useState(null)
   const [removing, setRemoving] = useState(null)
-  const [teamFlags, setTeamFlags] = useState({})
-  const { user: me } = useAuth()
 
   useEffect(() => {
-    api.get('/api/matches/teams')
-      .then(r => {
-        const map = {}
-        r.data.forEach(t => { map[t.name] = t.flag })
-        setTeamFlags(map)
-      })
-      .catch(() => {})
-  }, [])
+    api.get(`/api/leaderboard?group_id=${group.id}`)
+      .then(r => setUsers(r.data))
+      .catch(() => setUsers([]))
+  }, [group.id])
 
-  const activeGroup = groups.find(g => g.id === activeGroupId)
-  const isOwner = activeGroup?.owner_id === me?.id
-
-  useEffect(() => {
-    api.get('/api/leaderboard/groups')
-      .then(r => {
-        setGroups(r.data)
-        if (r.data.length > 0) setActiveGroupId(r.data[0].id)
-      })
-      .catch(() => {})
-  }, [])
-
-  async function handleRemoveMember(userId) {
-    if (!activeGroupId) return
+  async function handleRemove(userId) {
     setRemoving(userId)
     try {
-      await api.delete(`/api/leaderboard/groups/${activeGroupId}/members/${userId}`)
+      await api.delete(`/api/leaderboard/groups/${group.id}/members/${userId}`)
       toast.success('החבר הוסר מהקבוצה')
-      const r = await api.get('/api/leaderboard/groups')
-      setGroups(r.data)
+      setUsers(prev => prev.filter(u => u.id !== userId))
+      onRemoveMember()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'שגיאה')
     } finally {
@@ -55,114 +29,32 @@ export default function LeaderboardPage() {
     }
   }
 
-  async function handleCreateGroup(e) {
-    e.preventDefault()
-    if (!newGroupName.trim()) return
-    setCreating(true)
-    try {
-      const { data } = await api.post('/api/auth/groups', { name: newGroupName.trim() })
-      setGroups(prev => [...prev, data])
-      setActiveGroupId(data.id)
-      setNewGroup(data)
-      setNewGroupName('')
-      setShowCreate(false)
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'שגיאה')
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  useEffect(() => {
-    setLoading(true)
-    const url = activeGroupId
-      ? `/api/leaderboard?group_id=${activeGroupId}`
-      : '/api/leaderboard'
-    api.get(url)
-      .then(r => setUsers(r.data))
-      .finally(() => setLoading(false))
-  }, [activeGroupId])
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-black">🏆 טבלת דירוג</h1>
-        <button
-          onClick={() => { setShowCreate(v => !v); setNewGroup(null) }}
-          className="btn-secondary text-sm py-1.5 px-3"
+    <div className="mb-6">
+      {/* Group header */}
+      <div className="flex items-center justify-between mb-2">
+        <div
+          className="flex items-center gap-2 cursor-pointer group"
+          onClick={() => { navigator.clipboard?.writeText(group.code); toast.success('קוד הועתק!') }}
+          title="לחץ להעתקת קוד הצטרפות"
         >
-          + קבוצה חדשה
-        </button>
+          <span className="text-white/40 text-xs">קוד:</span>
+          <code className="text-green-300 font-mono font-bold tracking-wider text-sm">{group.code}</code>
+          <span className="text-white/20 text-xs group-hover:text-white/50 transition-colors">📋</span>
+        </div>
+        <h2 className="text-lg font-bold text-white">{group.name}
+          <span className="text-white/30 text-sm font-normal mr-1.5">({group.member_count} משתתפים)</span>
+        </h2>
       </div>
 
-      {showCreate && (
-        <form onSubmit={handleCreateGroup} className="card mb-4 flex gap-2">
-          <input
-            type="text"
-            value={newGroupName}
-            onChange={e => setNewGroupName(e.target.value)}
-            placeholder='שם הקבוצה (למשל: "משפחה")'
-            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm"
-            autoFocus
-          />
-          <button type="submit" disabled={creating || !newGroupName.trim()} className="btn-primary text-sm py-2 px-4">
-            {creating ? '...' : 'צור'}
-          </button>
-        </form>
-      )}
-
-      {newGroup && (
-        <div
-          className="card mb-4 bg-green-500/10 border-green-500/30 cursor-pointer"
-          onClick={() => { navigator.clipboard?.writeText(newGroup.code); toast.success('קוד הועתק!') }}
-        >
-          <p className="text-sm text-green-400/80 mb-1">✅ הקבוצה "<strong>{newGroup.name}</strong>" נוצרה!</p>
-          <p className="text-sm text-white/60">קוד הצטרפות לשיתוף:
-            <code className="mr-2 text-green-300 font-mono font-bold tracking-wider">{newGroup.code}</code>
-            <span className="text-xs text-white/30">(לחץ להעתקה)</span>
-          </p>
-        </div>
-      )}
-
-      {groups.length > 0 && (
-        <div className="mb-4">
-          {groups.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2 mb-2">
-              {groups.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => setActiveGroupId(g.id)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    activeGroupId === g.id
-                      ? 'bg-green-500 text-black'
-                      : 'bg-white/10 text-white/70 hover:bg-white/20'
-                  }`}
-                >
-                  {g.name}
-                  <span className="mr-1.5 text-xs opacity-60">({g.member_count})</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {groups.filter(g => g.id === activeGroupId).map(g => (
-            <div
-              key={g.id}
-              className="flex items-center gap-2 text-sm text-white/50 cursor-pointer hover:text-white/80 transition-colors"
-              onClick={() => { navigator.clipboard?.writeText(g.code); toast.success('קוד הועתק!') }}
-            >
-              <span>קוד הצטרפות לקבוצה "{g.name}":</span>
-              <code className="text-green-300 font-mono font-bold tracking-wider">{g.code}</code>
-              <span className="text-xs text-white/30">📋 לחץ להעתקה</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="text-center py-12 text-white/40">טוען...</div>
-      ) : (
-        <div className="card overflow-hidden p-0 overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+      {/* Table */}
+      <div className="card overflow-hidden p-0 overflow-x-auto">
+        {users === null ? (
+          <div className="text-center py-6 text-white/30 text-sm">טוען...</div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-6 text-white/30 text-sm">אין משתתפים עדיין</div>
+        ) : (
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">#</th>
@@ -217,7 +109,7 @@ export default function LeaderboardPage() {
                     <td className="py-3 px-2 text-center">
                       {user.id !== me?.id && (
                         <button
-                          onClick={() => handleRemoveMember(user.id)}
+                          onClick={() => handleRemove(user.id)}
                           disabled={removing === user.id}
                           className="text-red-400/60 hover:text-red-400 text-xs px-1.5 py-0.5 rounded transition-colors disabled:opacity-30"
                           title="הסר מהקבוצה"
@@ -231,11 +123,165 @@ export default function LeaderboardPage() {
               ))}
             </tbody>
           </table>
-          {users.length === 0 && (
-            <div className="text-center py-8 text-white/30">אין משתתפים עדיין</div>
-          )}
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function LeaderboardPage() {
+  const [groups, setGroups] = useState([])
+  const [teamFlags, setTeamFlags] = useState({})
+  const [showCreate, setShowCreate] = useState(false)
+  const [showJoin, setShowJoin] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [joinCode, setJoinCode] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [newGroup, setNewGroup] = useState(null)
+  const { user: me } = useAuth()
+
+  useEffect(() => {
+    api.get('/api/matches/teams')
+      .then(r => {
+        const map = {}
+        r.data.forEach(t => { map[t.name] = t.flag })
+        setTeamFlags(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  const loadGroups = useCallback(() => {
+    api.get('/api/leaderboard/groups')
+      .then(r => setGroups(r.data))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { loadGroups() }, [loadGroups])
+
+  async function handleCreateGroup(e) {
+    e.preventDefault()
+    if (!newGroupName.trim()) return
+    setCreating(true)
+    try {
+      const { data } = await api.post('/api/auth/groups', { name: newGroupName.trim() })
+      setGroups(prev => [...prev, data])
+      setNewGroup(data)
+      setNewGroupName('')
+      setShowCreate(false)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'שגיאה')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleJoinGroup(e) {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    setJoining(true)
+    try {
+      const { data } = await api.post('/api/auth/join-group', { code: joinCode.trim() })
+      setGroups(prev => [...prev, data])
+      setJoinCode('')
+      setShowJoin(false)
+      toast.success(`הצטרפת לקבוצה "${data.name}"! 🎉`)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'קוד שגוי')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-black">🏆 טבלת דירוג</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowJoin(v => !v); setShowCreate(false) }}
+            className="btn-secondary text-sm py-1.5 px-3"
+          >
+            🔗 הצטרף
+          </button>
+          <button
+            onClick={() => { setShowCreate(v => !v); setShowJoin(false); setNewGroup(null) }}
+            className="btn-secondary text-sm py-1.5 px-3"
+          >
+            + קבוצה חדשה
+          </button>
+        </div>
+      </div>
+
+      {/* Join existing group form */}
+      {showJoin && (
+        <form onSubmit={handleJoinGroup} className="card mb-4 flex gap-2">
+          <input
+            type="text"
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value)}
+            placeholder="הזן קוד קבוצה"
+            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm font-mono"
+            autoFocus
+          />
+          <button type="submit" disabled={joining || !joinCode.trim()} className="btn-primary text-sm py-2 px-4">
+            {joining ? '...' : 'הצטרף'}
+          </button>
+        </form>
+      )}
+
+      {/* Create new group form */}
+      {showCreate && (
+        <form onSubmit={handleCreateGroup} className="card mb-4 flex gap-2">
+          <input
+            type="text"
+            value={newGroupName}
+            onChange={e => setNewGroupName(e.target.value)}
+            placeholder='שם הקבוצה (למשל: "משפחה")'
+            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm"
+            autoFocus
+          />
+          <button type="submit" disabled={creating || !newGroupName.trim()} className="btn-primary text-sm py-2 px-4">
+            {creating ? '...' : 'צור'}
+          </button>
+        </form>
+      )}
+
+      {/* New group created banner */}
+      {newGroup && (
+        <div
+          className="card mb-4 bg-green-500/10 border-green-500/30 cursor-pointer"
+          onClick={() => { navigator.clipboard?.writeText(newGroup.code); toast.success('קוד הועתק!') }}
+        >
+          <p className="text-sm text-green-400/80 mb-1">✅ הקבוצה "<strong>{newGroup.name}</strong>" נוצרה!</p>
+          <p className="text-sm text-white/60">קוד הצטרפות:
+            <code className="mr-2 text-green-300 font-mono font-bold tracking-wider">{newGroup.code}</code>
+            <span className="text-xs text-white/30">(לחץ להעתקה)</span>
+          </p>
         </div>
       )}
+
+      {/* No groups */}
+      {groups.length === 0 && (
+        <div className="text-center py-12 text-white/30">
+          <p className="text-4xl mb-3">🏆</p>
+          <p>עדיין לא שייך לקבוצה</p>
+          <p className="text-sm mt-1">צור קבוצה חדשה או הצטרף לקיימת</p>
+        </div>
+      )}
+
+      {/* One table per group */}
+      {groups.map(group => (
+        <GroupTable
+          key={group.id}
+          group={group}
+          isOwner={group.owner_id === me?.id}
+          me={me}
+          teamFlags={teamFlags}
+          onRemoveMember={loadGroups}
+        />
+      ))}
     </div>
   )
 }

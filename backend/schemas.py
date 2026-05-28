@@ -122,3 +122,7 @@ class GroupPredictionOut(BaseModel):
     home_score: Optional[int]
     away_score: Optional[int]
     points: Optional[int]
+
+
+class JoinGroupByCodeIn(BaseModel):
+    code: str
