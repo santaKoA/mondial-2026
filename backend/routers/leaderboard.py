@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from datetime import datetime, timezone
 from database import get_db
@@ -57,15 +57,19 @@ def leaderboard(
     _: models.User = Depends(auth_utils.get_current_user),
     db: Session = Depends(get_db),
 ):
+    eager = [
+        joinedload(models.User.predictions).joinedload(models.Prediction.match),
+        joinedload(models.User.special_predictions),
+    ]
     if group_id:
         user_ids = [
             ug.user_id for ug in db.query(models.UserGroup).filter(
                 models.UserGroup.group_id == group_id
             ).all()
         ]
-        users = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+        users = db.query(models.User).options(*eager).filter(models.User.id.in_(user_ids)).all()
     else:
-        users = db.query(models.User).all()
+        users = db.query(models.User).options(*eager).all()
 
     return _build_leaderboard(users, reveal_special=_tournament_started())
 

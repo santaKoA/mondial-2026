@@ -4,11 +4,7 @@ import api from '../api'
 import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
 import { WC_TEAMS, WC_PLAYERS } from '../data/worldcup.js'
 
-const TOURNAMENT_START = new Date('2026-06-11T17:00:00Z')
-
-function isTournamentStarted() {
-  return new Date() >= TOURNAMENT_START
-}
+const FALLBACK_TOURNAMENT_START = new Date('2026-06-11T17:00:00Z')
 
 function getTeamFlag(name) {
   return WC_TEAMS.find(t => t.name === name)?.flag || ''
@@ -24,18 +20,24 @@ export default function SpecialPredictionsPage() {
   const [topScorerInput, setTopScorerInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
-  const locked = isTournamentStarted()
+  const [tournamentStart, setTournamentStart] = useState(FALLBACK_TOURNAMENT_START)
+  const locked = new Date() >= tournamentStart
 
   useEffect(() => {
-    api.get('/api/special-predictions/my')
-      .then(r => {
-        const map = {}
-        r.data.forEach(p => { map[p.prediction_type] = p })
-        setPredictions(map)
-        if (map.winner) setWinnerInput(map.winner.value)
-        if (map.top_scorer) setTopScorerInput(map.top_scorer.value)
-      })
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.get('/api/special-predictions/my'),
+      api.get('/api/config').catch(() => null),
+    ]).then(([predRes, cfgRes]) => {
+      const map = {}
+      predRes.data.forEach(p => { map[p.prediction_type] = p })
+      setPredictions(map)
+      if (map.winner) setWinnerInput(map.winner.value)
+      if (map.top_scorer) setTopScorerInput(map.top_scorer.value)
+      if (cfgRes?.data?.tournament_start) {
+        const ts = cfgRes.data.tournament_start
+        setTournamentStart(new Date(ts.endsWith('Z') ? ts : ts + 'Z'))
+      }
+    }).finally(() => setLoading(false))
   }, [])
 
   async function handleSave(type, value) {

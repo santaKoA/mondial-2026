@@ -6,6 +6,7 @@ from sqlalchemy import text
 from database import Base, engine, SessionLocal
 from routers import auth, matches, predictions, leaderboard, special_predictions, admin
 from services import results_sync
+from config import settings
 import seed_data
 
 
@@ -99,3 +100,8 @@ def startup():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/config")
+def config():
+    return {"tournament_start": settings.TOURNAMENT_START}
