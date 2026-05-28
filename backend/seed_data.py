@@ -99,13 +99,47 @@ GROUP_MATCHES = [
     ("אלג'יריה",           "אוסטריה",            "J", datetime(2026, 6, 28,  2,  0, tzinfo=timezone.utc)),  # 05:00 IL
 ]
 
-KNOCKOUT_STAGES = [
-    ("round_of_32",  16, datetime(2026, 7,  1, 17, 0, tzinfo=timezone.utc), timedelta(hours=3)),
-    ("round_of_16",   8, datetime(2026, 7,  5, 17, 0, tzinfo=timezone.utc), timedelta(hours=3)),
-    ("quarter_final", 4, datetime(2026, 7, 11, 17, 0, tzinfo=timezone.utc), timedelta(hours=5)),
-    ("semi_final",    2, datetime(2026, 7, 15, 17, 0, tzinfo=timezone.utc), timedelta(hours=24)),
-    ("third_place",   1, datetime(2026, 7, 18, 17, 0, tzinfo=timezone.utc), timedelta(hours=0)),
-    ("final",         1, datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc), timedelta(hours=0)),
+# Official FIFA 2026 knockout schedule — Israeli times (UTC+3) converted to UTC
+# Format: (stage, datetime_utc)
+KNOCKOUT_MATCHES = [
+    # --- Round of 32 ---
+    ("round_of_32", datetime(2026, 6, 28, 19,  0, tzinfo=timezone.utc)),  # 28.6  22:00 IL  לוס אנג'לס
+    ("round_of_32", datetime(2026, 6, 29, 17,  0, tzinfo=timezone.utc)),  # 29.6  20:00 IL  יוסטון
+    ("round_of_32", datetime(2026, 6, 29, 20, 30, tzinfo=timezone.utc)),  # 29.6  23:30 IL  בוסטון
+    ("round_of_32", datetime(2026, 6, 30,  1,  0, tzinfo=timezone.utc)),  # 30.6  04:00 IL  מונטריי
+    ("round_of_32", datetime(2026, 6, 30, 17,  0, tzinfo=timezone.utc)),  # 30.6  20:00 IL  דאלאס
+    ("round_of_32", datetime(2026, 6, 30, 21,  0, tzinfo=timezone.utc)),  # 1.7   00:00 IL  ניו יורק
+    ("round_of_32", datetime(2026, 7,  1,  1,  0, tzinfo=timezone.utc)),  # 1.7   04:00 IL  מקסיקו סיטי
+    ("round_of_32", datetime(2026, 7,  1, 16,  0, tzinfo=timezone.utc)),  # 1.7   19:00 IL  אטלנטה
+    ("round_of_32", datetime(2026, 7,  1, 20,  0, tzinfo=timezone.utc)),  # 1.7   23:00 IL  סיאטל
+    ("round_of_32", datetime(2026, 7,  2,  0,  0, tzinfo=timezone.utc)),  # 2.7   03:00 IL  סן פרנסיסקו
+    ("round_of_32", datetime(2026, 7,  2, 19,  0, tzinfo=timezone.utc)),  # 2.7   22:00 IL  לוס אנג'לס
+    ("round_of_32", datetime(2026, 7,  2, 23,  0, tzinfo=timezone.utc)),  # 3.7   02:00 IL  טורונטו
+    ("round_of_32", datetime(2026, 7,  3,  3,  0, tzinfo=timezone.utc)),  # 3.7   06:00 IL  ונקובר
+    ("round_of_32", datetime(2026, 7,  3, 18,  0, tzinfo=timezone.utc)),  # 3.7   21:00 IL  דאלאס
+    ("round_of_32", datetime(2026, 7,  3, 22,  0, tzinfo=timezone.utc)),  # 4.7   01:00 IL  מיאמי
+    ("round_of_32", datetime(2026, 7,  4,  1, 30, tzinfo=timezone.utc)),  # 4.7   04:30 IL  קנזס סיטי
+    # --- Round of 16 ---
+    ("round_of_16", datetime(2026, 7,  4, 17,  0, tzinfo=timezone.utc)),  # 4.7   20:00 IL  יוסטון
+    ("round_of_16", datetime(2026, 7,  4, 21,  0, tzinfo=timezone.utc)),  # 5.7   00:00 IL  פילדלפיה
+    ("round_of_16", datetime(2026, 7,  5, 20,  0, tzinfo=timezone.utc)),  # 5.7   23:00 IL  ניו יורק
+    ("round_of_16", datetime(2026, 7,  6,  0,  0, tzinfo=timezone.utc)),  # 6.7   03:00 IL  מקסיקו סיטי
+    ("round_of_16", datetime(2026, 7,  6, 19,  0, tzinfo=timezone.utc)),  # 6.7   22:00 IL  דאלאס
+    ("round_of_16", datetime(2026, 7,  7,  0,  0, tzinfo=timezone.utc)),  # 7.7   03:00 IL  סיאטל
+    ("round_of_16", datetime(2026, 7,  7, 16,  0, tzinfo=timezone.utc)),  # 7.7   19:00 IL  אטלנטה
+    ("round_of_16", datetime(2026, 7,  7, 20,  0, tzinfo=timezone.utc)),  # 7.7   23:00 IL  ונקובר
+    # --- Quarter-finals ---
+    ("quarter_final", datetime(2026, 7,  9, 20,  0, tzinfo=timezone.utc)),  # 9.7   23:00 IL  בוסטון
+    ("quarter_final", datetime(2026, 7, 10, 19,  0, tzinfo=timezone.utc)),  # 10.7  22:00 IL  לוס אנג'לס
+    ("quarter_final", datetime(2026, 7, 11, 21,  0, tzinfo=timezone.utc)),  # 12.7  00:00 IL  מיאמי
+    ("quarter_final", datetime(2026, 7, 12,  1,  0, tzinfo=timezone.utc)),  # 12.7  04:00 IL  קנזס סיטי
+    # --- Semi-finals ---
+    ("semi_final",  datetime(2026, 7, 14, 19,  0, tzinfo=timezone.utc)),  # 14.7  22:00 IL  דאלאס
+    ("semi_final",  datetime(2026, 7, 15, 19,  0, tzinfo=timezone.utc)),  # 15.7  22:00 IL  אטלנטה
+    # --- Third place ---
+    ("third_place", datetime(2026, 7, 18, 21,  0, tzinfo=timezone.utc)),  # 19.7  00:00 IL  מיאמי
+    # --- Final ---
+    ("final",       datetime(2026, 7, 19, 19,  0, tzinfo=timezone.utc)),  # 19.7  22:00 IL  ניו יורק
 ]
 
 
@@ -142,17 +176,16 @@ def seed(db: Session):
         db.add(match)
         match_number += 1
 
-    for stage, count, base_time, interval in KNOCKOUT_STAGES:
-        for i in range(count):
-            match = models.Match(
-                home_team_id=None,
-                away_team_id=None,
-                stage=stage,
-                group_name=None,
-                match_number=match_number,
-                scheduled_at=base_time + interval * i,
-            )
-            db.add(match)
-            match_number += 1
+    for stage, scheduled_at in KNOCKOUT_MATCHES:
+        match = models.Match(
+            home_team_id=None,
+            away_team_id=None,
+            stage=stage,
+            group_name=None,
+            match_number=match_number,
+            scheduled_at=scheduled_at,
+        )
+        db.add(match)
+        match_number += 1
 
     db.commit()
