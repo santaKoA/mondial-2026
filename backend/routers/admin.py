@@ -123,11 +123,11 @@ def list_groups(
 @router.post("/groups", response_model=schemas.GroupOut)
 def create_group(
     body: schemas.GroupCreateIn,
-    _: models.User = Depends(auth_utils.get_admin_user),
+    current_admin: models.User = Depends(auth_utils.get_admin_user),
     db: Session = Depends(get_db),
 ):
     code = secrets.token_urlsafe(6)
-    group = models.Group(name=body.name.strip(), code=code)
+    group = models.Group(name=body.name.strip(), code=code, owner_id=current_admin.id)
     db.add(group)
     db.commit()
     db.refresh(group)

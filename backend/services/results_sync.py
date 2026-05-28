@@ -128,19 +128,20 @@ def _parse_fixture_dt(fixture: dict) -> datetime:
 def _find_knockout_match_by_time(db, fixture_dt: datetime) -> models.Match | None:
     """Find the unassigned knockout match closest to fixture_dt (within ±2h)."""
     window = timedelta(hours=2)
+    fixture_dt_naive = fixture_dt.replace(tzinfo=None)
     candidates = (
         db.query(models.Match)
         .filter(
             models.Match.stage != "group",
             models.Match.home_team_id.is_(None),
-            models.Match.scheduled_at >= fixture_dt - window,
-            models.Match.scheduled_at <= fixture_dt + window,
+            models.Match.scheduled_at >= fixture_dt_naive - window,
+            models.Match.scheduled_at <= fixture_dt_naive + window,
         )
         .all()
     )
     if not candidates:
         return None
-    return min(candidates, key=lambda m: abs((m.scheduled_at - fixture_dt).total_seconds()))
+    return min(candidates, key=lambda m: abs((m.scheduled_at - fixture_dt_naive).total_seconds()))
 
 
 async def sync_results() -> dict:
@@ -239,7 +240,7 @@ def _next_match_window() -> tuple[bool, float]:
     """
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         upcoming = (
             db.query(models.Match)
             .filter(models.Match.status != "finished")
