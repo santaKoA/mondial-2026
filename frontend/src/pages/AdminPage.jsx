@@ -168,7 +168,12 @@ export default function AdminPage() {
       if (data.error) {
         toast.error(`שגיאת סנכרון: ${data.error}`)
       } else {
-        toast.success(`סונכרן! עודכנו ${data.updated} משחקים`)
+        const changed = (data.scores_updated || 0) + (data.teams_assigned || 0)
+        toast.success(
+          changed > 0
+            ? `סונכרן ✅ ${data.scores_updated} תוצאות · ${data.teams_assigned} שיבוצי קבוצות (${data.total_fixtures} משחקים)`
+            : `סונכרן ✅ אין שינויים חדשים (${data.total_fixtures} משחקים מ-API)`
+        )
         await loadData()
       }
       const sRes = await api.get('/api/admin/sync/status')
