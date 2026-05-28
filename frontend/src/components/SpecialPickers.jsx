@@ -3,9 +3,10 @@ import { WC_TEAMS, WC_PLAYERS } from '../data/worldcup.js'
 
 const KNOWN_PLAYERS = WC_PLAYERS.filter(p => p.name !== 'אחר')
 
-function PlayerPhoto({ apiId, flag, name }) {
+function PlayerPhoto({ apiId, localImg, flag, name }) {
   const [failed, setFailed] = useState(false)
-  if (!apiId || failed) {
+  const src = localImg || (apiId ? `https://media.api-sports.io/football/players/${apiId}.png` : null)
+  if (!src || failed) {
     return (
       <span className="w-9 h-9 flex items-center justify-center text-xl flex-shrink-0">
         {flag}
@@ -14,7 +15,7 @@ function PlayerPhoto({ apiId, flag, name }) {
   }
   return (
     <img
-      src={`https://media.api-sports.io/football/players/${apiId}.png`}
+      src={src}
       alt={name}
       className="w-9 h-9 rounded-full object-cover flex-shrink-0 bg-white/10"
       onError={() => setFailed(true)}
@@ -122,7 +123,7 @@ export function PlayerPicker({ value, onChange, disabled }) {
                     : 'bg-white/5 border border-transparent hover:bg-white/10'
                 }`}
               >
-                <PlayerPhoto apiId={p.apiId} flag={p.flag} name={p.name} />
+                <PlayerPhoto apiId={p.apiId} localImg={p.localImg} flag={p.flag} name={p.name} />
                 <div className="flex-1 min-w-0 text-right">
                   <div className="font-medium text-sm">{p.name}</div>
                   {p.team && (
