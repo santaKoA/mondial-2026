@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
-
-const TEAMS = [
-  'ארגנטינה', 'צרפת', 'ברזיל', 'ספרד', 'אנגליה', 'גרמניה', 'פורטוגל', 'הולנד',
-  'בלגיה', 'מרוקו', 'ארה"ב', 'מקסיקו', 'קולומביה', 'אורוגוואי', 'יפן', 'קרואטיה',
-  'שווייץ', 'דנמרק', 'סנגל', 'קנדה', 'קוריאה הדרומית', 'אוסטרליה', 'פולין', 'סרביה',
-  'טורקיה', 'אוסטריה', 'מצרים', 'ניגריה', 'חוף השנהב', 'אקוודור', 'נורווגיה', 'קמרון',
-  'גאנה', 'אירן', 'ערב הסעודית', 'פנמה', 'אוזבקיסטן', 'סקוטלנד', 'ירדן', 'קטאר',
-  'דרום אפריקה', 'אלג\'יריה', 'קונגו', 'עיראק', 'ג\'מייקה', 'צ\'כיה', 'קוסטה ריקה', 'בוליביה',
-]
+import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
+import { WC_TEAMS, WC_PLAYERS } from '../data/worldcup.js'
 
 const TOURNAMENT_START = new Date('2026-06-11T17:00:00Z')
 
 function isTournamentStarted() {
   return new Date() >= TOURNAMENT_START
+}
+
+function getTeamFlag(name) {
+  return WC_TEAMS.find(t => t.name === name)?.flag || ''
+}
+
+function getPlayerFlag(name) {
+  return WC_PLAYERS.find(p => p.name === name)?.flag || ''
 }
 
 export default function SpecialPredictionsPage() {
@@ -74,26 +75,21 @@ export default function SpecialPredictionsPage() {
 
           {locked ? (
             <div className="bg-white/5 rounded-lg px-4 py-3 text-white font-medium">
-              {predictions.winner?.value || <span className="text-white/30">לא הוגש ניחוש</span>}
+              {predictions.winner?.value
+                ? <span>{getTeamFlag(predictions.winner.value)} {predictions.winner.value}</span>
+                : <span className="text-white/30">לא הוגש ניחוש</span>}
             </div>
           ) : (
-            <div className="flex gap-2">
-              <select
-                value={winnerInput}
-                onChange={e => setWinnerInput(e.target.value)}
-                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-green-400"
-              >
-                <option value="">-- בחר נבחרת --</option>
-                {TEAMS.sort().map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+            <>
+              <TeamPicker value={winnerInput} onChange={setWinnerInput} />
               <button
                 onClick={() => handleSave('winner', winnerInput)}
                 disabled={saving === 'winner' || !winnerInput}
-                className="btn-primary"
+                className="btn-primary w-full mt-3"
               >
-                {saving === 'winner' ? '...' : predictions.winner ? '✏️' : '💾'}
+                {saving === 'winner' ? '...' : predictions.winner ? '✏️ עדכן' : '💾 שמור'}
               </button>
-            </div>
+            </>
           )}
 
           {predictions.winner?.points > 0 && (
@@ -112,25 +108,21 @@ export default function SpecialPredictionsPage() {
 
           {locked ? (
             <div className="bg-white/5 rounded-lg px-4 py-3 text-white font-medium">
-              {predictions.top_scorer?.value || <span className="text-white/30">לא הוגש ניחוש</span>}
+              {predictions.top_scorer?.value
+                ? <span>{getPlayerFlag(predictions.top_scorer.value)} {predictions.top_scorer.value}</span>
+                : <span className="text-white/30">לא הוגש ניחוש</span>}
             </div>
           ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={topScorerInput}
-                onChange={e => setTopScorerInput(e.target.value)}
-                placeholder="שם השחקן (למשל: ליאונל מסי)"
-                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
-              />
+            <>
+              <PlayerPicker value={topScorerInput} onChange={setTopScorerInput} />
               <button
                 onClick={() => handleSave('top_scorer', topScorerInput)}
                 disabled={saving === 'top_scorer' || !topScorerInput.trim()}
-                className="btn-primary"
+                className="btn-primary w-full mt-3"
               >
-                {saving === 'top_scorer' ? '...' : predictions.top_scorer ? '✏️' : '💾'}
+                {saving === 'top_scorer' ? '...' : predictions.top_scorer ? '✏️ עדכן' : '💾 שמור'}
               </button>
-            </div>
+            </>
           )}
 
           {predictions.top_scorer?.points > 0 && (

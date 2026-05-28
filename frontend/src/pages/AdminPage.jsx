@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
+import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
 
 function formatIsrael(str) {
   const d = str && !str.endsWith('Z') && !str.includes('+') ? new Date(str + 'Z') : new Date(str)
@@ -137,21 +138,44 @@ export default function AdminPage() {
   const [groups, setGroups] = useState([])
   const [newGroupName, setNewGroupName] = useState('')
   const [creatingGroup, setCreatingGroup] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(null)
+  const [syncing, setSyncing] = useState(false)
 
   async function loadData() {
     try {
-      const [mRes, tRes, uRes, gRes] = await Promise.all([
+      const [mRes, tRes, uRes, gRes, sRes] = await Promise.all([
         api.get('/api/matches'),
         api.get('/api/admin/teams'),
         api.get('/api/admin/users'),
         api.get('/api/admin/groups'),
+        api.get('/api/admin/sync/status'),
       ])
       setMatches(mRes.data)
       setTeams(tRes.data)
       setUsers(uRes.data)
       setGroups(gRes.data)
+      setSyncStatus(sRes.data)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const { data } = await api.post('/api/admin/sync')
+      if (data.error) {
+        toast.error(`שגיאת סנכרון: ${data.error}`)
+      } else {
+        toast.success(`סונכרן! עודכנו ${data.updated} משחקים`)
+        await loadData()
+      }
+      const sRes = await api.get('/api/admin/sync/status')
+      setSyncStatus(sRes.data)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאת סנכרון')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -206,7 +230,30 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black mb-5">🛠 פאנל ניהול</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-2xl font-black">🛠 פאנל ניהול</h1>
+        <div className="flex items-center gap-3">
+          {syncStatus && (
+            <div className="text-xs text-white/40 text-left">
+              {syncStatus.error ? (
+                <span className="text-red-400">{syncStatus.error}</span>
+              ) : syncStatus.last_sync_at ? (
+                <span>סונכרן: {formatIsrael(syncStatus.last_sync_at)}</span>
+              ) : (
+                <span>{syncStatus.api_configured ? 'טרם סונכרן' : 'API לא מוגדר'}</span>
+              )}
+            </div>
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <span className={syncing ? 'animate-spin' : ''}>🔄</span>
+            {syncing ? 'מסנכרן...' : 'סנכרן תוצאות'}
+          </button>
+        </div>
+      </div>
 
       <div className="flex gap-2 mb-5">
         {['groups', 'matches', 'finished', 'special', 'users'].map(tab => (
@@ -329,19 +376,26 @@ export default function AdminPage() {
               onChange={e => {
                 setSpecialType(e.target.value)
                 setSpecialPoints(15)
+                setSpecialValue('')
               }}
               className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
             >
               <option value="winner">🏆 זוכה המונדיאל (15 נק׳)</option>
               <option value="top_scorer">⚽ מלך השערים (15 נק׳)</option>
             </select>
-            <input
-              type="text"
-              value={specialValue}
-              onChange={e => setSpecialValue(e.target.value)}
-              placeholder={specialType === 'winner' ? 'שם הנבחרת הזוכה' : 'שם מלך השערים'}
-              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30"
-            />
+
+            {specialType === 'winner' ? (
+              <TeamPicker value={specialValue} onChange={setSpecialValue} />
+            ) : (
+              <PlayerPicker value={specialValue} onChange={setSpecialValue} />
+            )}
+
+            {specialValue && (
+              <div className="text-sm text-white/60">
+                נבחר: <span className="text-white font-medium">{specialValue}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <label className="text-sm text-white/60">נקודות:</label>
               <input
@@ -351,7 +405,7 @@ export default function AdminPage() {
                 className="w-20 bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
               />
             </div>
-            <button onClick={handleSpecialResult} disabled={saving} className="btn-primary">
+            <button onClick={handleSpecialResult} disabled={saving || !specialValue.trim()} className="btn-primary">
               {saving ? '...' : 'הענק נקודות'}
             </button>
           </div>
