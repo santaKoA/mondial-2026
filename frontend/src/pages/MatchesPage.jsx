@@ -34,10 +34,10 @@ function todayIsrael() {
 
 export default function MatchesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab')
+  const initialTabRef = useRef(searchParams.get('tab'))
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState(initialTab || 'today')
+  const [activeStage, setActiveStage] = useState(initialTabRef.current || 'today')
   const [activeGroup, setActiveGroup] = useState(null)
   const initializedRef = useRef(false)
 
@@ -48,7 +48,7 @@ export default function MatchesPage() {
       setMatches(sorted)
       if (!initializedRef.current) {
         initializedRef.current = true
-        if (!initialTab) {
+        if (!initialTabRef.current) {
           const today = todayIsrael()
           const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
           if (!hasTodayMatches) {
@@ -67,13 +67,13 @@ export default function MatchesPage() {
     } finally {
       setLoading(false)
     }
-  }, [initialTab])
+  }, []) // empty deps — loadMatches never changes, no re-run on URL cleanup
 
   useEffect(() => { loadMatches() }, [loadMatches])
 
   useEffect(() => {
-    if (initialTab) setSearchParams({}, { replace: true })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (initialTabRef.current) setSearchParams({}, { replace: true })
+  }, [setSearchParams])
 
   const stages = [...new Set(matches.map(m => m.stage))].sort(
     (a, b) => STAGE_ORDER.indexOf(a) - STAGE_ORDER.indexOf(b)
