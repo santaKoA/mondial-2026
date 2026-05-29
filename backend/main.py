@@ -7,6 +7,7 @@ from database import Base, engine, SessionLocal
 from routers import auth, matches, predictions, leaderboard, special_predictions, admin
 from services import results_sync
 from config import settings
+import models
 import seed_data
 
 
