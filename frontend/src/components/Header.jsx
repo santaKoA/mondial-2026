@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import ChangePasswordModal from './ChangePasswordModal'
 
 export default function Header() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [showChangePw, setShowChangePw] = useState(false)
 
   function handleLogout() {
     logout()
@@ -42,12 +45,21 @@ export default function Header() {
             <span className="text-sm text-white/60 hidden sm:block">
               שלום, <span className="text-white font-medium">{user?.name}</span>
             </span>
+            <button
+              onClick={() => setShowChangePw(true)}
+              className="text-white/30 hover:text-white/70 text-xs transition-colors"
+              title="שינוי סיסמה"
+            >
+              🔑
+            </button>
             <button onClick={handleLogout} className="text-white/40 hover:text-white text-xs transition-colors">
               יציאה
             </button>
           </div>
         </div>
       </header>
+
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
 
       {/* Mobile bottom navigation */}
       <nav

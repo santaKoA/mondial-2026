@@ -164,3 +164,18 @@ def join_existing_group(
 @router.get("/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(auth_utils.get_current_user), db: Session = Depends(get_db)):
     return _user_to_out(current_user, db)
+
+
+@router.put("/change-password")
+def change_password(
+    body: schemas.ChangePasswordIn,
+    current_user: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.password_hash or not verify_password(body.old_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="הסיסמה הישנה שגויה")
+    if len(body.new_password) < 4:
+        raise HTTPException(status_code=400, detail="הסיסמה החדשה חייבת להכיל לפחות 4 תווים")
+    current_user.password_hash = hash_password(body.new_password)
+    db.commit()
+    return {"ok": True}

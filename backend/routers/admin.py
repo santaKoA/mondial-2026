@@ -158,6 +158,24 @@ def sync_status(_: models.User = Depends(auth_utils.get_admin_user)):
     }
 
 
+@router.put("/users/{user_id}/password")
+def reset_user_password(
+    user_id: int,
+    body: schemas.ResetPasswordIn,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if len(body.new_password) < 4:
+        raise HTTPException(status_code=400, detail="הסיסמה חייבת להכיל לפחות 4 תווים")
+    from auth import hash_password
+    user.password_hash = hash_password(body.new_password)
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,

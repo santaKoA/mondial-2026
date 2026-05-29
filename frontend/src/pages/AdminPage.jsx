@@ -141,6 +141,7 @@ export default function AdminPage() {
   const [syncStatus, setSyncStatus] = useState(null)
   const [syncing, setSyncing] = useState(false)
   const [deletingUser, setDeletingUser] = useState(null)
+  const [resetPw, setResetPw] = useState(null) // { id, value }
 
   async function loadData() {
     try {
@@ -199,6 +200,18 @@ export default function AdminPage() {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
       setCreatingGroup(false)
+    }
+  }
+
+  async function handleResetPassword(id) {
+    if (!resetPw?.value?.trim()) { toast.error('הזן סיסמה חדשה'); return }
+    if (resetPw.value.length < 4) { toast.error('הסיסמה חייבת להכיל לפחות 4 תווים'); return }
+    try {
+      await api.put(`/api/admin/users/${id}/password`, { new_password: resetPw.value })
+      toast.success('הסיסמה אופסה בהצלחה ✅')
+      setResetPw(null)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
     }
   }
 
@@ -446,26 +459,67 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {[...users].sort((a, b) => b.total_points - a.total_points).map((u, i) => (
-                <tr key={u.id} className="border-b border-white/5 last:border-0">
-                  <td className="py-3 px-4">
-                    {u.name}
-                    {u.is_admin && <span className="mr-2 text-xs text-green-400">(admin)</span>}
-                  </td>
-                  <td className="py-3 px-4 text-center text-white/60 text-sm">{u.prediction_count}</td>
-                  <td className="py-3 px-4 text-center font-bold">{u.total_points}</td>
-                  <td className="py-3 px-2 text-center">
-                    {!u.is_admin && (
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.name)}
-                        disabled={deletingUser === u.id}
-                        className="text-red-400/50 hover:text-red-400 text-xs transition-colors disabled:opacity-30"
-                      >
-                        {deletingUser === u.id ? '...' : 'מחק'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
+              {[...users].sort((a, b) => b.total_points - a.total_points).map((u) => (
+                <>
+                  <tr key={u.id} className="border-b border-white/5">
+                    <td className="py-3 px-4">
+                      {u.name}
+                      {u.is_admin && <span className="mr-2 text-xs text-green-400">(admin)</span>}
+                    </td>
+                    <td className="py-3 px-4 text-center text-white/60 text-sm">{u.prediction_count}</td>
+                    <td className="py-3 px-4 text-center font-bold">{u.total_points}</td>
+                    <td className="py-3 px-2 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setResetPw(resetPw?.id === u.id ? null : { id: u.id, value: '' })}
+                          className="text-yellow-400/50 hover:text-yellow-400 text-xs transition-colors"
+                          title="אפס סיסמה"
+                        >
+                          🔑
+                        </button>
+                        {!u.is_admin && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            disabled={deletingUser === u.id}
+                            className="text-red-400/50 hover:text-red-400 text-xs transition-colors disabled:opacity-30"
+                          >
+                            {deletingUser === u.id ? '...' : 'מחק'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {resetPw?.id === u.id && (
+                    <tr key={`${u.id}-pw`} className="border-b border-white/5 bg-yellow-500/5">
+                      <td colSpan={4} className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/50 whitespace-nowrap">סיסמה חדשה עבור {u.name}:</span>
+                          <input
+                            type="password"
+                            value={resetPw.value}
+                            onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
+                            placeholder="לפחות 4 תווים"
+                            className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400"
+                            autoFocus
+                            onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
+                          />
+                          <button
+                            onClick={() => handleResetPassword(u.id)}
+                            className="bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap"
+                          >
+                            אפס
+                          </button>
+                          <button
+                            onClick={() => setResetPw(null)}
+                            className="text-white/30 hover:text-white/60 text-xs transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>

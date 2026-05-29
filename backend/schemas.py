@@ -126,3 +126,12 @@ class GroupPredictionOut(BaseModel):
 
 class JoinGroupByCodeIn(BaseModel):
     code: str
+
+
+class ChangePasswordIn(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class ResetPasswordIn(BaseModel):
+    new_password: str
