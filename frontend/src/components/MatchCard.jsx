@@ -143,16 +143,14 @@ export default function MatchCard({ match, onPredictionSaved }) {
           {!isClosed && !isFinished && (
             <CountdownTimer scheduledAt={match.scheduled_at} onExpired={handleExpired} />
           )}
-          {isFinished && (
-            <span className="text-xs text-white/40">
-              {formatIsrael(match.scheduled_at)}
+          {isClosed && !isFinished && (
+            <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full">
+              🔒 נעול
             </span>
           )}
-          {!isFinished && !isClosed && (
-            <span className="text-xs text-white/40">
-              {formatIsrael(match.scheduled_at)}
-            </span>
-          )}
+          <span className="text-xs text-white/40">
+            {formatIsrael(match.scheduled_at)}
+          </span>
         </div>
       </div>
 

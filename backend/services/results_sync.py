@@ -251,8 +251,6 @@ def _next_match_window() -> tuple[bool, float]:
             delta = (m.scheduled_at - now).total_seconds()
             if -1800 <= delta <= 7200:  # -30min to +2h
                 return True, 600  # poll every 10 min
-            if 0 < delta <= 3600:  # next match within 1h
-                return False, min(delta - 1800, 600)
         return False, 1800  # no active/upcoming match → 30min sleep
     finally:
         db.close()

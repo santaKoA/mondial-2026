@@ -29,37 +29,27 @@ export default function CountdownTimer({ scheduledAt, onExpired }) {
   if (diff <= 0) {
     return (
       <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full">
-        🔒 סגור
+        🔒 נעול
       </span>
     )
   }
 
   const totalSec = Math.floor(diff / 1000)
-  const days  = Math.floor(totalSec / 86400)
-  const hours = Math.floor((totalSec % 86400) / 3600)
-  const mins  = Math.floor((totalSec % 3600) / 60)
-  const secs  = totalSec % 60
 
-  // > 3 days — show days only, low urgency
-  if (days >= 3) {
+  // ≥ 24h — show days only
+  if (totalSec >= 86400) {
+    const days = Math.floor(totalSec / 86400)
     return (
       <span className="inline-flex items-center gap-1 bg-white/8 text-white/50 text-xs px-2 py-0.5 rounded-full">
-        ⏳ {days} ימים
+        ⏳ {days} {days === 1 ? 'יום' : 'ימים'}
       </span>
     )
   }
 
-  // 1–3 days — show days + hours, mild urgency
-  if (days >= 1) {
-    return (
-      <span className="inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-400 text-xs font-medium px-2 py-0.5 rounded-full">
-        ⏳ {days}י {pad(hours)}:{pad(mins)}
-      </span>
-    )
-  }
-
-  // < 24h, > 1h — show H:MM שעות
+  // < 24h, ≥ 1h — show HH:MM שעות
   if (totalSec >= 3600) {
+    const hours = Math.floor(totalSec / 3600)
+    const mins  = Math.floor((totalSec % 3600) / 60)
     return (
       <span className="inline-flex items-center gap-1 bg-orange-500/15 text-orange-400 text-xs font-medium px-2 py-0.5 rounded-full">
         ⏰ {hours}:{pad(mins)} שעות
@@ -67,10 +57,12 @@ export default function CountdownTimer({ scheduledAt, onExpired }) {
     )
   }
 
-  // < 1h — show MM:SS, high urgency
+  // < 1h — show MM:SS דק, high urgency
+  const mins = Math.floor(totalSec / 60)
+  const secs = totalSec % 60
   return (
     <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded-full font-mono animate-pulse">
-      🔴 {pad(mins)}:{pad(secs)}
+      🔴 {pad(mins)}:{pad(secs)} דק
     </span>
   )
 }
