@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../api'
 import MatchCard from '../components/MatchCard'
 
@@ -32,9 +33,11 @@ function todayIsrael() {
 }
 
 export default function MatchesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState('today')
+  const [activeStage, setActiveStage] = useState(initialTab || 'today')
   const [activeGroup, setActiveGroup] = useState(null)
   const initializedRef = useRef(false)
 
@@ -45,15 +48,17 @@ export default function MatchesPage() {
       setMatches(sorted)
       if (!initializedRef.current) {
         initializedRef.current = true
-        const today = todayIsrael()
-        const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
-        if (!hasTodayMatches) {
-          const firstUpcoming = sorted.find(m => m.status === 'upcoming')
-          if (firstUpcoming) {
-            setActiveStage(firstUpcoming.stage)
-            if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
-          } else {
-            setActiveStage('group')
+        if (!initialTab) {
+          const today = todayIsrael()
+          const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
+          if (!hasTodayMatches) {
+            const firstUpcoming = sorted.find(m => m.status === 'upcoming')
+            if (firstUpcoming) {
+              setActiveStage(firstUpcoming.stage)
+              if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
+            } else {
+              setActiveStage('group')
+            }
           }
         }
       }
@@ -62,9 +67,13 @@ export default function MatchesPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [initialTab])
 
   useEffect(() => { loadMatches() }, [loadMatches])
+
+  useEffect(() => {
+    if (initialTab) setSearchParams({}, { replace: true })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stages = [...new Set(matches.map(m => m.stage))].sort(
     (a, b) => STAGE_ORDER.indexOf(a) - STAGE_ORDER.indexOf(b)

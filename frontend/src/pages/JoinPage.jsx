@@ -19,6 +19,10 @@ export default function JoinPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
+  function loginDest() {
+    return new Date() >= new Date('2026-06-11') ? '/?tab=today' : '/?tab=all'
+  }
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('mondial_last_user')
@@ -45,7 +49,7 @@ export default function JoinPage() {
       })
       login(data.token, data.user, data.group?.code, data.group?.name)
       toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
-      navigate('/')
+      navigate(loginDest())
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
@@ -88,7 +92,7 @@ export default function JoinPage() {
       })
       login(data.token, data.user, data.group?.code, data.group?.name)
       toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
-      navigate('/')
+      navigate(loginDest())
     } catch (e) {
       toast.error(e.response?.data?.detail || 'קוד שגוי')
     } finally {
@@ -137,7 +141,7 @@ export default function JoinPage() {
           <button
             onClick={() => {
               login(pendingAuth.token, pendingAuth.user, createdGroup.code, createdGroup.name)
-              navigate('/')
+              navigate(loginDest())
             }}
             className="btn-primary w-full py-3"
           >
