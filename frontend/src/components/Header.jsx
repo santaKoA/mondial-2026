@@ -10,6 +10,8 @@ export default function Header() {
     navigate('/join')
   }
 
+  const matchesHref = new Date() >= new Date('2026-06-11') ? '/?tab=today' : '/?tab=all'
+
   const desktopLinkClass = ({ isActive }) =>
     `px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
       isActive ? 'bg-green-500 text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -26,7 +28,7 @@ export default function Header() {
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           {/* Desktop nav */}
           <div className="hidden sm:flex items-center gap-1">
-            <NavLink to="/" end className={desktopLinkClass}>⚽ משחקים</NavLink>
+            <NavLink to={matchesHref} end className={desktopLinkClass}>⚽ משחקים</NavLink>
             <NavLink to="/leaderboard" className={desktopLinkClass}>🏆 טבלה</NavLink>
             <NavLink to="/special" className={desktopLinkClass}>⭐ מיוחדים</NavLink>
             {user?.is_admin && <NavLink to="/admin" className={desktopLinkClass}>🛠 ניהול</NavLink>}
@@ -52,7 +54,7 @@ export default function Header() {
         className="fixed bottom-0 inset-x-0 z-50 bg-pitch-800 border-t border-white/10 flex sm:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <NavLink to="/" end className={mobileLinkClass}>
+        <NavLink to={matchesHref} end className={mobileLinkClass}>
           <span className="text-2xl">⚽</span>
           <span className="text-xs font-medium">משחקים</span>
         </NavLink>
