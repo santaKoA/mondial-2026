@@ -77,9 +77,11 @@ export default function MatchesPage() {
 
   const displayed = activeStage === 'today'
     ? todayMatches
-    : activeStage === 'group' && activeGroup
-      ? filteredByStage.filter(m => m.group_name === activeGroup)
-      : filteredByStage
+    : activeStage === 'all'
+      ? matches
+      : activeStage === 'group' && activeGroup
+        ? filteredByStage.filter(m => m.group_name === activeGroup)
+        : filteredByStage
 
   useEffect(() => {
     if (activeStage === 'group' && groups.length > 0 && !groups.includes(activeGroup)) {
@@ -106,6 +108,16 @@ export default function MatchesPage() {
           }`}
         >
           📅 היום
+        </button>
+        <button
+          onClick={() => setActiveStage('all')}
+          className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            activeStage === 'all'
+              ? 'bg-green-500 text-black'
+              : 'bg-white/10 text-white/70 hover:bg-white/20'
+          }`}
+        >
+          🗓️ כל המשחקים
         </button>
         {stages.map(stage => (
           <button
