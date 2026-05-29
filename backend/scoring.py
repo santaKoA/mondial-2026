@@ -8,11 +8,6 @@ STAGE_POINTS = {
     "final": {"exact": 10, "direction": 5},
 }
 
-SPECIAL_POINTS = {
-    "winner": 15,
-    "top_scorer": 10,
-}
-
 
 def get_direction(home: int, away: int) -> str:
     if home > away:

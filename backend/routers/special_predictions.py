@@ -1,20 +1,14 @@
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from config import settings
 from database import get_db
 import models
 import schemas
 import auth as auth_utils
+from utils import tournament_started
 
 router = APIRouter(prefix="/api/special-predictions", tags=["special_predictions"])
 
 ALLOWED_TYPES = {"winner", "top_scorer"}
-
-
-def _tournament_started() -> bool:
-    start = datetime.fromisoformat(settings.TOURNAMENT_START).replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) >= start
 
 
 @router.get("/my", response_model=list[schemas.SpecialPredictionOut])
@@ -35,7 +29,7 @@ def upsert_special_prediction(
 ):
     if body.prediction_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Invalid prediction type")
-    if _tournament_started():
+    if tournament_started():
         raise HTTPException(status_code=400, detail="הניחושים המיוחדים נסגרו עם תחילת הטורניר")
 
     existing = db.query(models.SpecialPrediction).filter(

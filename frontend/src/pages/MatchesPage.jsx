@@ -155,7 +155,7 @@ export default function MatchesPage() {
 
       {displayed.length === 0 ? (
         <div className="text-center py-12 text-white/30">
-          {activeStage === 'today' ? 'אין משחקים היום' : 'אין משחקים בשלב זה'}
+          {activeStage === 'today' ? 'אין משחקים היום' : activeStage === 'all' ? 'אין משחקים' : 'אין משחקים בשלב זה'}
         </div>
       ) : (
         <div className="flex flex-col gap-4">

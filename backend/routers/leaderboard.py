@@ -1,17 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from typing import Optional
-from datetime import datetime, timezone
 from database import get_db
-from config import settings
 import models
 import schemas
 import auth as auth_utils
-
-
-def _tournament_started() -> bool:
-    start = datetime.fromisoformat(settings.TOURNAMENT_START).replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) >= start
+from utils import tournament_started
 
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
@@ -71,7 +66,7 @@ def leaderboard(
     else:
         users = db.query(models.User).options(*eager).all()
 
-    return _build_leaderboard(users, reveal_special=_tournament_started())
+    return _build_leaderboard(users, reveal_special=tournament_started())
 
 
 @router.get("/groups", response_model=list[schemas.GroupOut])
@@ -79,16 +74,25 @@ def my_groups(
     current_user: models.User = Depends(auth_utils.get_current_user),
     db: Session = Depends(get_db),
 ):
-    user_groups = db.query(models.UserGroup).filter(
-        models.UserGroup.user_id == current_user.id
-    ).all()
-    result = []
-    for ug in user_groups:
-        group = db.query(models.Group).filter(models.Group.id == ug.group_id).first()
-        if group:
-            count = db.query(models.UserGroup).filter(models.UserGroup.group_id == group.id).count()
-            result.append(schemas.GroupOut(id=group.id, name=group.name, code=group.code, member_count=count, owner_id=group.owner_id))
-    return result
+    group_ids = [
+        ug.group_id for ug in
+        db.query(models.UserGroup).filter(models.UserGroup.user_id == current_user.id).all()
+    ]
+    if not group_ids:
+        return []
+
+    # Single query: groups + member counts
+    rows = (
+        db.query(models.Group, func.count(models.UserGroup.user_id).label("cnt"))
+        .join(models.UserGroup, models.Group.id == models.UserGroup.group_id)
+        .filter(models.Group.id.in_(group_ids))
+        .group_by(models.Group.id)
+        .all()
+    )
+    return [
+        schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=cnt, owner_id=g.owner_id)
+        for g, cnt in rows
+    ]
 
 
 @router.delete("/groups/{group_id}/members/{user_id}")

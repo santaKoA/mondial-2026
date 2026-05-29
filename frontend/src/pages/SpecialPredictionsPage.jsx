@@ -4,7 +4,8 @@ import api from '../api'
 import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
 import { WC_TEAMS, WC_PLAYERS } from '../data/worldcup.js'
 
-const FALLBACK_TOURNAMENT_START = new Date('2026-06-11T17:00:00Z')
+// 22:00 Israel time (UTC+3) = 19:00 UTC
+const FALLBACK_TOURNAMENT_START = new Date('2026-06-11T19:00:00Z')
 
 function getTeamFlag(name) {
   return WC_TEAMS.find(t => t.name === name)?.flag || ''
@@ -21,7 +22,15 @@ export default function SpecialPredictionsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(null)
   const [tournamentStart, setTournamentStart] = useState(FALLBACK_TOURNAMENT_START)
-  const locked = new Date() >= tournamentStart
+  const [locked, setLocked] = useState(() => new Date() >= FALLBACK_TOURNAMENT_START)
+
+  // Re-check lock every 10 seconds so UI updates the moment tournament starts
+  useEffect(() => {
+    const check = () => setLocked(new Date() >= tournamentStart)
+    check()
+    const id = setInterval(check, 10000)
+    return () => clearInterval(id)
+  }, [tournamentStart])
 
   useEffect(() => {
     Promise.all([
@@ -62,7 +71,7 @@ export default function SpecialPredictionsPage() {
       <p className="text-white/50 mb-6 text-sm">
         {locked
           ? '🔒 הניחושים המיוחדים נסגרו עם תחילת הטורניר'
-          : 'חייב להגיש לפני תחילת הטורניר (11.6.2026)'}
+          : 'חייב להגיש לפני תחילת הטורניר (11.6.2026 22:00)'}
       </p>
 
       <div className="flex flex-col gap-5">

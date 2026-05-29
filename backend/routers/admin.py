@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, contains_eager
 from database import get_db
 import secrets
 import models
@@ -82,7 +82,10 @@ def list_users(
     _: models.User = Depends(auth_utils.get_admin_user),
     db: Session = Depends(get_db),
 ):
-    users = db.query(models.User).all()
+    users = db.query(models.User).options(
+        joinedload(models.User.predictions),
+        joinedload(models.User.special_predictions),
+    ).all()
     result = []
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
@@ -116,7 +119,7 @@ def list_groups(
     result = []
     for g in groups:
         count = db.query(models.UserGroup).filter(models.UserGroup.group_id == g.id).count()
-        result.append(schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=count))
+        result.append(schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=count, owner_id=g.owner_id))
     return result
 
 
