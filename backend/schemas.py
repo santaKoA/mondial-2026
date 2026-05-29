@@ -55,6 +55,8 @@ class UserOut(BaseModel):
     direction_count: int = 0
     winner_pick: Optional[str] = None
     top_scorer_pick: Optional[str] = None
+    created_at: Optional[datetime] = None
+    group_names: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -103,6 +105,7 @@ class GroupOut(BaseModel):
     code: str
     member_count: int = 0
     owner_id: Optional[int] = None
+    member_names: list[str] = []
 
     model_config = {"from_attributes": True}
 

@@ -85,11 +85,13 @@ def list_users(
     users = db.query(models.User).options(
         joinedload(models.User.predictions),
         joinedload(models.User.special_predictions),
+        joinedload(models.User.groups).joinedload(models.UserGroup.group),
     ).all()
     result = []
     for user in users:
         match_pts = sum(p.points or 0 for p in user.predictions)
         special_pts = sum(s.points or 0 for s in user.special_predictions)
+        group_names = [ug.group.name for ug in user.groups if ug.group]
         result.append(
             schemas.UserOut(
                 id=user.id,
@@ -97,6 +99,8 @@ def list_users(
                 is_admin=user.is_admin,
                 total_points=match_pts + special_pts,
                 prediction_count=len(user.predictions),
+                created_at=user.created_at,
+                group_names=group_names,
             )
         )
     return result
@@ -115,16 +119,19 @@ def list_groups(
     _: models.User = Depends(auth_utils.get_admin_user),
     db: Session = Depends(get_db),
 ):
-    from sqlalchemy import func
-    rows = (
-        db.query(models.Group, func.count(models.UserGroup.user_id).label("cnt"))
-        .outerjoin(models.UserGroup, models.Group.id == models.UserGroup.group_id)
-        .group_by(models.Group.id)
-        .all()
-    )
+    groups = db.query(models.Group).options(
+        joinedload(models.Group.members).joinedload(models.UserGroup.user)
+    ).all()
     return [
-        schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=cnt or 0, owner_id=g.owner_id)
-        for g, cnt in rows
+        schemas.GroupOut(
+            id=g.id,
+            name=g.name,
+            code=g.code,
+            member_count=len(g.members),
+            owner_id=g.owner_id,
+            member_names=[ug.user.name for ug in g.members if ug.user],
+        )
+        for g in groups
     ]
 
 

@@ -3,6 +3,15 @@ import toast from 'react-hot-toast'
 import api from '../api'
 import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
 
+function formatDate(str) {
+  if (!str) return '—'
+  const d = str && !str.endsWith('Z') && !str.includes('+') ? new Date(str + 'Z') : new Date(str)
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit', month: '2-digit', year: '2-digit',
+  }).format(d)
+}
+
 function formatIsrael(str) {
   const d = str && !str.endsWith('Z') && !str.includes('+') ? new Date(str + 'Z') : new Date(str)
   return new Intl.DateTimeFormat('he-IL', {
@@ -355,7 +364,16 @@ export default function AdminPage() {
                           {g.code}
                         </code>
                       </td>
-                      <td className="py-3 px-4 text-center text-white/60">{g.member_count}</td>
+                      <td className="py-3 px-4 text-center text-white/60 relative group/members cursor-default select-none">
+                        <span className={g.member_count > 0 ? 'underline decoration-dotted decoration-white/30' : ''}>
+                          {g.member_count}
+                        </span>
+                        {g.member_names?.length > 0 && (
+                          <div className="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-1 bg-pitch-800 border border-white/20 rounded-lg px-3 py-2 text-xs text-white shadow-xl opacity-0 group-hover/members:opacity-100 pointer-events-none transition-opacity whitespace-nowrap text-right">
+                            {g.member_names.map((n, i) => <div key={i}>{n}</div>)}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => deleteGroup(g.id)}
@@ -453,6 +471,8 @@ export default function AdminPage() {
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם</th>
+                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">קבוצות</th>
+                <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">נוצר</th>
                 <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">ניחושים</th>
                 <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">נקודות</th>
                 <th className="py-3 px-2"></th>
@@ -466,6 +486,15 @@ export default function AdminPage() {
                       {u.name}
                       {u.is_admin && <span className="mr-2 text-xs text-green-400">(admin)</span>}
                     </td>
+                    <td className="py-3 px-4 text-sm text-white/50">
+                      {u.group_names?.length > 0
+                        ? u.group_names.map((gn, i) => (
+                            <span key={i} className="inline-block bg-white/10 rounded px-1.5 py-0.5 text-xs ml-1 mb-0.5">{gn}</span>
+                          ))
+                        : <span className="text-white/20">—</span>
+                      }
+                    </td>
+                    <td className="py-3 px-4 text-center text-white/50 text-xs">{formatDate(u.created_at)}</td>
                     <td className="py-3 px-4 text-center text-white/60 text-sm">{u.prediction_count}</td>
                     <td className="py-3 px-4 text-center font-bold">{u.total_points}</td>
                     <td className="py-3 px-2 text-center">
@@ -491,7 +520,7 @@ export default function AdminPage() {
                   </tr>
                   {resetPw?.id === u.id && (
                     <tr key={`${u.id}-pw`} className="border-b border-white/5 bg-yellow-500/5">
-                      <td colSpan={4} className="px-4 py-2">
+                      <td colSpan={6} className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-white/50 whitespace-nowrap">סיסמה חדשה עבור {u.name}:</span>
                           <input
