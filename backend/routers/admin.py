@@ -115,12 +115,17 @@ def list_groups(
     _: models.User = Depends(auth_utils.get_admin_user),
     db: Session = Depends(get_db),
 ):
-    groups = db.query(models.Group).all()
-    result = []
-    for g in groups:
-        count = db.query(models.UserGroup).filter(models.UserGroup.group_id == g.id).count()
-        result.append(schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=count, owner_id=g.owner_id))
-    return result
+    from sqlalchemy import func
+    rows = (
+        db.query(models.Group, func.count(models.UserGroup.user_id).label("cnt"))
+        .outerjoin(models.UserGroup, models.Group.id == models.UserGroup.group_id)
+        .group_by(models.Group.id)
+        .all()
+    )
+    return [
+        schemas.GroupOut(id=g.id, name=g.name, code=g.code, member_count=cnt or 0, owner_id=g.owner_id)
+        for g, cnt in rows
+    ]
 
 
 @router.post("/groups", response_model=schemas.GroupOut)

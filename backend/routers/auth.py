@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _user_to_out(user: models.User, db: Session) -> schemas.UserOut:
-    total = sum(p.points or 0 for p in user.predictions) + sum(s.points for s in user.special_predictions)
+    total = sum(p.points or 0 for p in user.predictions) + sum(s.points or 0 for s in user.special_predictions)
     count = len(user.predictions)
     return schemas.UserOut(
         id=user.id,

@@ -202,7 +202,8 @@ export default function AdminPage() {
     }
   }
 
-  async function handleDeleteUser(id) {
+  async function handleDeleteUser(id, name) {
+    if (!window.confirm(`למחוק את "${name}"? פעולה זו תמחק את כל הניחושים שלו ולא ניתנת לביטול.`)) return
     setDeletingUser(id)
     try {
       await api.delete(`/api/admin/users/${id}`)
@@ -456,7 +457,7 @@ export default function AdminPage() {
                   <td className="py-3 px-2 text-center">
                     {!u.is_admin && (
                       <button
-                        onClick={() => handleDeleteUser(u.id)}
+                        onClick={() => handleDeleteUser(u.id, u.name)}
                         disabled={deletingUser === u.id}
                         className="text-red-400/50 hover:text-red-400 text-xs transition-colors disabled:opacity-30"
                       >

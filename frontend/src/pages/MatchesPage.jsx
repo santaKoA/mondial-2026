@@ -71,9 +71,15 @@ export default function MatchesPage() {
 
   useEffect(() => { loadMatches() }, [loadMatches])
 
+  // React to ?tab param changes — handles both initial mount cleanup and
+  // clicking the nav while already on the matches page (no remount in that case)
+  const tabParam = searchParams.get('tab')
   useEffect(() => {
-    if (initialTabRef.current) setSearchParams({}, { replace: true })
-  }, [setSearchParams])
+    if (tabParam) {
+      setActiveStage(tabParam)
+      setSearchParams({}, { replace: true })
+    }
+  }, [tabParam, setSearchParams])
 
   const stages = [...new Set(matches.map(m => m.stage))].sort(
     (a, b) => STAGE_ORDER.indexOf(a) - STAGE_ORDER.indexOf(b)
