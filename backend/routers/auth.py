@@ -40,10 +40,23 @@ def _add_to_group(user: models.User, group: models.Group, db: Session):
 def _get_or_create_user(name: str, password: str, group: models.Group, is_admin: bool, db: Session) -> models.User:
     if not password:
         raise HTTPException(status_code=400, detail="סיסמה נדרשת")
+
+    # First: find by primary group (original sign-up group)
     user = db.query(models.User).filter(
         models.User.name == name,
         models.User.group_id == group.id,
     ).first()
+
+    # Second: find by group membership — handles multi-group users logging in
+    # with a code of a group they joined later (not their primary group)
+    if not user:
+        user = (
+            db.query(models.User)
+            .join(models.UserGroup, models.UserGroup.user_id == models.User.id)
+            .filter(models.UserGroup.group_id == group.id, models.User.name == name)
+            .first()
+        )
+
     if user:
         if user.password_hash is None:
             user.password_hash = hash_password(password)
