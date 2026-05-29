@@ -19,31 +19,6 @@ STAGE_ORDER = {
 }
 
 
-def _enrich_match(match: models.Match, user: Optional[models.User], db: Session) -> schemas.MatchOut:
-    pred = None
-    if user:
-        p = db.query(models.Prediction).filter(
-            models.Prediction.match_id == match.id,
-            models.Prediction.user_id == user.id,
-        ).first()
-        if p:
-            pred = schemas.PredictionOut.model_validate(p)
-
-    return schemas.MatchOut(
-        id=match.id,
-        match_number=match.match_number,
-        stage=match.stage,
-        group_name=match.group_name,
-        scheduled_at=match.scheduled_at,
-        home_team=schemas.TeamOut.model_validate(match.home_team) if match.home_team else None,
-        away_team=schemas.TeamOut.model_validate(match.away_team) if match.away_team else None,
-        home_score=match.home_score,
-        away_score=match.away_score,
-        status=match.status,
-        my_prediction=pred,
-    )
-
-
 @router.get("/teams", response_model=list[schemas.TeamOut])
 def list_teams(
     _: models.User = Depends(auth_utils.get_current_user),
@@ -65,4 +40,31 @@ def list_matches(
     if stage:
         q = q.filter(models.Match.stage == stage)
     matches = q.order_by(models.Match.scheduled_at, models.Match.match_number).all()
-    return [_enrich_match(m, current_user, db) for m in matches]
+
+    # Load all predictions for this user in a single query, keyed by match_id
+    pred_map: dict[int, models.Prediction] = {}
+    if current_user:
+        match_ids = [m.id for m in matches]
+        preds = db.query(models.Prediction).filter(
+            models.Prediction.user_id == current_user.id,
+            models.Prediction.match_id.in_(match_ids),
+        ).all()
+        pred_map = {p.match_id: p for p in preds}
+
+    result = []
+    for m in matches:
+        p = pred_map.get(m.id)
+        result.append(schemas.MatchOut(
+            id=m.id,
+            match_number=m.match_number,
+            stage=m.stage,
+            group_name=m.group_name,
+            scheduled_at=m.scheduled_at,
+            home_team=schemas.TeamOut.model_validate(m.home_team) if m.home_team else None,
+            away_team=schemas.TeamOut.model_validate(m.away_team) if m.away_team else None,
+            home_score=m.home_score,
+            away_score=m.away_score,
+            status=m.status,
+            my_prediction=schemas.PredictionOut.model_validate(p) if p else None,
+        ))
+    return result

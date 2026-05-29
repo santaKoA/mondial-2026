@@ -175,6 +175,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 type="number"
                 min="0"
                 max="99"
+                step="1"
                 value={homeInput}
                 onChange={e => setHomeInput(e.target.value)}
                 disabled={isClosed}
@@ -186,6 +187,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 type="number"
                 min="0"
                 max="99"
+                step="1"
                 value={awayInput}
                 onChange={e => setAwayInput(e.target.value)}
                 disabled={isClosed}

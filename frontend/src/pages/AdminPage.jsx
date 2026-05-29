@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
 import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
@@ -467,7 +467,7 @@ export default function AdminPage() {
 
       {activeTab === 'users' && (
         <div className="card overflow-hidden p-0 overflow-x-auto">
-          <table className="w-full min-w-[280px]">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם</th>
@@ -480,8 +480,8 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {[...users].sort((a, b) => b.total_points - a.total_points).map((u) => (
-                <>
-                  <tr key={u.id} className="border-b border-white/5">
+                <Fragment key={u.id}>
+                  <tr className="border-b border-white/5">
                     <td className="py-3 px-4">
                       {u.name}
                       {u.is_admin && <span className="mr-2 text-xs text-green-400">(admin)</span>}
@@ -567,7 +567,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
