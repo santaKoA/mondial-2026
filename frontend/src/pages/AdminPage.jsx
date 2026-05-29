@@ -495,14 +495,33 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-white/50 whitespace-nowrap">סיסמה חדשה עבור {u.name}:</span>
                           <input
-                            type="password"
+                            type="text"
                             value={resetPw.value}
                             onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
                             placeholder="לפחות 4 תווים"
-                            className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400"
+                            className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400 font-mono"
                             autoFocus
                             onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
                           />
+                          <button
+                            onClick={() => {
+                              const pw = Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 6)
+                              setResetPw(r => ({ ...r, value: pw }))
+                            }}
+                            className="text-white/40 hover:text-white/80 text-xs px-2 py-1.5 rounded transition-colors whitespace-nowrap"
+                            title="צור סיסמה אקראית"
+                          >
+                            🎲
+                          </button>
+                          {resetPw.value && (
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(resetPw.value); toast.success('הועתק!') }}
+                              className="text-white/40 hover:text-white/80 text-xs px-2 py-1.5 rounded transition-colors"
+                              title="העתק"
+                            >
+                              📋
+                            </button>
+                          )}
                           <button
                             onClick={() => handleResetPassword(u.id)}
                             className="bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap"
