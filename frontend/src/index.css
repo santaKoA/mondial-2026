@@ -24,7 +24,7 @@
   }
 
   .btn-primary {
-    @apply bg-green-500 hover:bg-green-400 text-black font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-green-500 hover:bg-green-400 text-black font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30;
   }
 
   .btn-secondary {
@@ -32,6 +32,6 @@
   }
 
   .score-input {
-    @apply w-10 h-10 sm:w-14 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-400 text-white;
+    @apply w-14 h-14 sm:w-16 sm:h-16 text-center text-3xl sm:text-4xl font-black bg-black/40 border-2 border-white/30 rounded-lg focus:outline-none focus:border-green-400 text-white shadow-inner;
   }
 }

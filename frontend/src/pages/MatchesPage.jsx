@@ -105,7 +105,36 @@ export default function MatchesPage() {
   }, [activeStage, groups, activeGroup])
 
   if (loading) {
-    return <div className="text-center py-20 text-white/40">טוען משחקים...</div>
+    return (
+      <div>
+        <div className="h-8 w-36 bg-white/10 rounded-full mb-5 animate-pulse" />
+        <div className="flex gap-2 mb-4">
+          {[1,2,3].map(i => <div key={i} className="h-9 w-24 bg-white/10 rounded-full animate-pulse" />)}
+        </div>
+        <div className="flex flex-col gap-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-4 w-24 bg-white/10 rounded-full mb-4" />
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 bg-white/10 rounded-full" />
+                  <div className="h-3 w-16 bg-white/10 rounded-full" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="w-14 h-14 bg-white/10 rounded-lg" />
+                  <div className="w-4 h-4 bg-white/10 rounded self-center" />
+                  <div className="w-14 h-14 bg-white/10 rounded-lg" />
+                </div>
+                <div className="flex-1 flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 bg-white/10 rounded-full" />
+                  <div className="h-3 w-16 bg-white/10 rounded-full" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (

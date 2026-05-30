@@ -85,10 +85,18 @@ export default function SpecialPredictionsPage() {
           <p className="text-white/40 text-sm mb-4">איזו נבחרת תזכה באליפות העולם?</p>
 
           {locked ? (
-            <div className="bg-white/5 rounded-lg px-4 py-3 text-white font-medium">
-              {predictions.winner?.value
-                ? <span>{getTeamFlag(predictions.winner.value)} {predictions.winner.value}</span>
-                : <span className="text-white/30">לא הוגש ניחוש</span>}
+            <div className="border-2 border-yellow-500/40 bg-yellow-500/5 rounded-xl px-5 py-4">
+              {predictions.winner?.value ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-5xl">{getTeamFlag(predictions.winner.value)}</span>
+                  <div>
+                    <div className="font-black text-xl text-white">{predictions.winner.value}</div>
+                    <div className="text-yellow-500/70 text-xs mt-0.5">🔒 נעול</div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-white/30">לא הוגש ניחוש 🔒</span>
+              )}
             </div>
           ) : (
             <>
@@ -118,10 +126,18 @@ export default function SpecialPredictionsPage() {
           <p className="text-white/40 text-sm mb-4">מי ישיג את שערים הכי הרבה בטורניר?</p>
 
           {locked ? (
-            <div className="bg-white/5 rounded-lg px-4 py-3 text-white font-medium">
-              {predictions.top_scorer?.value
-                ? <span>{getPlayerFlag(predictions.top_scorer.value)} {predictions.top_scorer.value}</span>
-                : <span className="text-white/30">לא הוגש ניחוש</span>}
+            <div className="border-2 border-yellow-500/40 bg-yellow-500/5 rounded-xl px-5 py-4">
+              {predictions.top_scorer?.value ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-5xl">{getPlayerFlag(predictions.top_scorer.value)}</span>
+                  <div>
+                    <div className="font-black text-xl text-white">{predictions.top_scorer.value}</div>
+                    <div className="text-yellow-500/70 text-xs mt-0.5">🔒 נעול</div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-white/30">לא הוגש ניחוש 🔒</span>
+              )}
             </div>
           ) : (
             <>

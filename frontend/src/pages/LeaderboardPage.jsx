@@ -84,11 +84,15 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
                     </span>
                     {user.id === me?.id && <span className="text-xs text-green-400/60 mr-1">(אני)</span>}
                   </td>
-                  <td className="py-3 px-2 text-center text-sm font-bold text-green-400">
-                    {user.exact_count > 0 ? user.exact_count : <span className="text-white/20 font-normal">0</span>}
+                  <td className="py-3 px-2 text-center">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                      user.exact_count > 0 ? 'bg-green-500/25 text-green-400' : 'text-white/20'
+                    }`}>{user.exact_count}</span>
                   </td>
-                  <td className="py-3 px-2 text-center text-sm font-bold text-yellow-400">
-                    {user.direction_count > 0 ? user.direction_count : <span className="text-white/20 font-normal">0</span>}
+                  <td className="py-3 px-2 text-center">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                      user.direction_count > 0 ? 'bg-yellow-500/25 text-yellow-400' : 'text-white/20'
+                    }`}>{user.direction_count}</span>
                   </td>
                   <td className="py-3 px-2 text-center">
                     {user.winner_pick
@@ -99,7 +103,7 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
                     {user.top_scorer_pick || <span className="text-white/20">—</span>}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span className={`font-black text-lg ${
+                    <span className={`font-black text-2xl ${
                       idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-white/80' : idx === 2 ? 'text-orange-400' : 'text-white'
                     }`}>
                       {user.total_points}

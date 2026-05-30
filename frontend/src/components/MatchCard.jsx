@@ -162,13 +162,26 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
 
         {/* Score area */}
-        <div className="flex flex-col items-center gap-2 min-w-[120px]">
+        <div className="flex flex-col items-center gap-2 min-w-[140px]">
           {isFinished ? (
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-white">{match.home_score}</span>
-              <span className="text-white/40">-</span>
-              <span className="text-3xl font-black text-white">{match.away_score}</span>
-            </div>
+            <>
+              <div className="flex items-center gap-2 bg-black/60 rounded-xl px-5 py-2">
+                <span className="text-4xl font-black text-white">{match.home_score}</span>
+                <span className="text-white/40 text-2xl font-bold">-</span>
+                <span className="text-4xl font-black text-white">{match.away_score}</span>
+              </div>
+              {hasPrediction && (
+                <div className={`text-xs font-bold px-3 py-1 rounded-full ${
+                  resultColor === 'text-green-400' ? 'bg-green-500/20 text-green-400' :
+                  resultColor === 'text-yellow-400' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-red-500/20 text-red-400'
+                }`}>
+                  {resultColor === 'text-green-400' ? '🎯 בול! ' : resultColor === 'text-yellow-400' ? '↗ כיוון ' : '✗ '}
+                  {match.my_prediction.home_score}–{match.my_prediction.away_score}
+                  {match.my_prediction.points != null && ` +${match.my_prediction.points}נק`}
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex items-center gap-2">
               <input
@@ -182,7 +195,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 className="score-input"
                 placeholder="0"
               />
-              <span className="text-white/40 font-bold">-</span>
+              <span className="text-white/40 text-2xl font-bold">-</span>
               <input
                 type="number"
                 min="0"
@@ -194,15 +207,6 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 className="score-input"
                 placeholder="0"
               />
-            </div>
-          )}
-
-          {isFinished && hasPrediction && (
-            <div className={`text-sm font-medium ${resultColor}`}>
-              ניחוש: {match.my_prediction.home_score}-{match.my_prediction.away_score}
-              {match.my_prediction.points != null && (
-                <span className="mr-1 font-bold">({match.my_prediction.points}נק)</span>
-              )}
             </div>
           )}
 
