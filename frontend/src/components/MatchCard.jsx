@@ -59,6 +59,45 @@ function PointsBadge({ points, stage }) {
   )
 }
 
+function ScoreBox({ value, onChange, disabled, spinnerSide }) {
+  const num = value === '' ? '' : parseInt(value) || 0
+
+  function increment() {
+    const n = value === '' ? 0 : Math.min(99, parseInt(value) || 0)
+    onChange(String(n + 1 > 99 ? 99 : n + 1))
+  }
+  function decrement() {
+    const n = value === '' ? 0 : Math.max(0, parseInt(value) || 0)
+    onChange(String(n - 1 < 0 ? 0 : n - 1))
+  }
+
+  const spinnerButtons = !disabled && (
+    <div className="flex flex-col h-full border-white/15" style={{ borderLeftWidth: spinnerSide === 'right' ? 1 : 0, borderRightWidth: spinnerSide === 'left' ? 1 : 0, borderStyle: 'solid' }}>
+      <button onMouseDown={e => { e.preventDefault(); increment() }} className="flex-1 flex items-center justify-center px-2 text-white/60 hover:text-white hover:bg-white/10 transition-colors text-[10px]">▲</button>
+      <button onMouseDown={e => { e.preventDefault(); decrement() }} className="flex-1 flex items-center justify-center px-2 text-white/60 hover:text-white hover:bg-white/10 transition-colors text-[10px] border-t border-white/10">▼</button>
+    </div>
+  )
+
+  return (
+    <div className="flex items-stretch w-16 h-14 sm:w-20 sm:h-16 bg-black/40 border-2 border-white/30 rounded-lg overflow-hidden focus-within:border-green-400">
+      {spinnerSide === 'left' && spinnerButtons}
+      <input
+        type="number"
+        min="0"
+        max="99"
+        step="1"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="flex-1 min-w-0 text-center text-3xl sm:text-4xl font-black bg-transparent text-white focus:outline-none"
+        placeholder="0"
+        style={{ direction: 'ltr' }}
+      />
+      {spinnerSide === 'right' && spinnerButtons}
+    </div>
+  )
+}
+
 export default function MatchCard({ match, onPredictionSaved }) {
   const [homeInput, setHomeInput] = useState(
     match.my_prediction != null ? String(match.my_prediction.home_score) : ''
@@ -184,29 +223,9 @@ export default function MatchCard({ match, onPredictionSaved }) {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                max="99"
-                step="1"
-                value={homeInput}
-                onChange={e => setHomeInput(e.target.value)}
-                disabled={isClosed}
-                className="score-input"
-                placeholder="0"
-              />
+              <ScoreBox value={homeInput} onChange={setHomeInput} disabled={isClosed} spinnerSide="right" />
               <span className="text-white/40 text-2xl font-bold">-</span>
-              <input
-                type="number"
-                min="0"
-                max="99"
-                step="1"
-                value={awayInput}
-                onChange={e => setAwayInput(e.target.value)}
-                disabled={isClosed}
-                className="score-input"
-                placeholder="0"
-              />
+              <ScoreBox value={awayInput} onChange={setAwayInput} disabled={isClosed} spinnerSide="left" />
             </div>
           )}
 
