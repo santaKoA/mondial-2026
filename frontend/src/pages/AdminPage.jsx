@@ -33,6 +33,35 @@ const STAGE_LABELS = {
   final: 'גמר',
 }
 
+function ManualScoreRow({ match, onSave }) {
+  const [h, setH] = useState(match.home_score != null ? String(match.home_score) : '')
+  const [a, setA] = useState(match.away_score != null ? String(match.away_score) : '')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    const home = parseInt(h), away = parseInt(a)
+    if (isNaN(home) || isNaN(away)) { toast.error('הזן תוצאה'); return }
+    setSaving(true)
+    await onSave(match.id, home, away)
+    setSaving(false)
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-2 mt-3 p-2 bg-white/5 rounded-lg border border-white/10">
+      <span className="text-xs text-white/40">עדכון ידני:</span>
+      <input type="number" min="0" max="20" value={h} onChange={e => setH(e.target.value)}
+        className="w-10 h-8 text-center text-sm font-bold bg-black/40 border border-white/20 rounded text-white focus:outline-none focus:border-orange-400" />
+      <span className="text-white/40">–</span>
+      <input type="number" min="0" max="20" value={a} onChange={e => setA(e.target.value)}
+        className="w-10 h-8 text-center text-sm font-bold bg-black/40 border border-white/20 rounded text-white focus:outline-none focus:border-orange-400" />
+      <button onClick={save} disabled={saving || h === '' || a === ''}
+        className="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 font-medium">
+        {saving ? '...' : '✔ שמור'}
+      </button>
+    </div>
+  )
+}
+
 function MatchResultRow({ match, teams, onSaved }) {
   const [home, setHome] = useState(match.home_score != null ? String(match.home_score) : '')
   const [away, setAway] = useState(match.away_score != null ? String(match.away_score) : '')
@@ -238,6 +267,17 @@ export default function AdminPage() {
       setTestMatches(prev => prev.filter(m => m.id !== id))
       setTestMatchCards(prev => prev.filter(m => m.id !== id))
       toast.success('נמחק')
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    }
+  }
+
+  async function handleManualScore(id, homeScore, awayScore) {
+    try {
+      await api.put(`/api/admin/matches/${id}/result`, { home_score: homeScore, away_score: awayScore })
+      const tcRes = await api.get('/api/admin/test-matches/cards')
+      setTestMatchCards(tcRes.data)
+      toast.success(`תוצאה עודכנה: ${homeScore}–${awayScore}`)
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
     }
@@ -776,6 +816,9 @@ export default function AdminPage() {
                       setTestMatchCards(tcRes.data)
                     }} />
 
+                    {/* Manual score update */}
+                    <ManualScoreRow match={m} onSave={handleManualScore} />
+
                     {/* Management buttons */}
                     <div className="flex gap-2 mt-2 px-1 justify-center">
                       {meta && <span className="text-xs text-white/25">fixture_id: <code className="text-orange-300">{meta.api_fixture_id || '—'}</code></span>}
@@ -784,7 +827,7 @@ export default function AdminPage() {
                         disabled={syncingTest === m.id || !meta?.api_fixture_id}
                         className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-40"
                       >
-                        {syncingTest === m.id ? '⏳' : '🔄'} סנכרן
+                        {syncingTest === m.id ? '⏳' : '🔄'} סנכרן API
                       </button>
                       <button
                         onClick={() => handleDeleteTestMatch(m.id)}
