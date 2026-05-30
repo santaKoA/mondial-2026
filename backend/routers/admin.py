@@ -258,6 +258,40 @@ async def _find_fixture_id(league_id: int, season: int, scheduled_at: datetime) 
         return None
 
 
+@router.get("/search-fixtures")
+async def search_fixtures(
+    league_id: int,
+    season: int,
+    date: str,  # YYYY-MM-DD
+    _: models.User = Depends(auth_utils.get_admin_user),
+):
+    """Search api-football fixtures by league+season+date. Returns list for admin to pick fixture_id."""
+    from config import settings
+    if not settings.FOOTBALL_API_KEY:
+        raise HTTPException(status_code=400, detail="FOOTBALL_API_KEY לא מוגדר")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{results_sync.API_URL}/fixtures",
+                params={"league": league_id, "season": season, "date": date},
+                headers={"x-apisports-key": settings.FOOTBALL_API_KEY},
+            )
+        resp.raise_for_status()
+        fixtures = resp.json().get("response", [])
+        return [
+            {
+                "fixture_id": f["fixture"]["id"],
+                "home": f["teams"]["home"]["name"],
+                "away": f["teams"]["away"]["name"],
+                "date": f["fixture"]["date"],
+                "status": f["fixture"]["status"]["long"],
+            }
+            for f in fixtures
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/test-match", response_model=schemas.TestMatchOut)
 async def create_test_match(
     body: schemas.TestMatchCreate,

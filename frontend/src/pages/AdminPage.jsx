@@ -163,6 +163,8 @@ export default function AdminPage() {
   })
   const [creatingTest, setCreatingTest] = useState(false)
   const [syncingTest, setSyncingTest] = useState(null)
+  const [searchingFixtures, setSearchingFixtures] = useState(false)
+  const [fixtureResults, setFixtureResults] = useState(null)
 
   async function loadData() {
     try {
@@ -186,6 +188,24 @@ export default function AdminPage() {
       toast.error(e.response?.data?.detail || 'שגיאה בטעינת נתוני הניהול')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleSearchFixtures() {
+    if (!testForm.scheduled_at) { toast.error('בחר תאריך קודם'); return }
+    setSearchingFixtures(true)
+    setFixtureResults(null)
+    try {
+      const date = testForm.scheduled_at.slice(0, 10) // YYYY-MM-DD
+      const { data } = await api.get('/api/admin/search-fixtures', {
+        params: { league_id: testForm.api_league_id, season: testForm.api_season, date }
+      })
+      setFixtureResults(data)
+      if (data.length === 0) toast.error('לא נמצאו משחקים בתאריך זה')
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה בחיפוש')
+    } finally {
+      setSearchingFixtures(false)
     }
   }
 
@@ -709,10 +729,37 @@ export default function AdminPage() {
                     className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400 placeholder-white/20" />
                 </div>
               </div>
-              <button type="submit" disabled={creatingTest}
-                className="bg-orange-500 hover:bg-orange-400 text-black font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50">
-                {creatingTest ? '⏳ יוצר + מחפש fixture...' : '🧪 צור משחק טסט'}
-              </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleSearchFixtures} disabled={searchingFixtures}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                  {searchingFixtures ? '⏳ מחפש...' : '🔍 חפש fixture לפי תאריך'}
+                </button>
+                <button type="submit" disabled={creatingTest}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                  {creatingTest ? '⏳ יוצר...' : '🧪 צור משחק טסט'}
+                </button>
+              </div>
+
+              {fixtureResults && fixtureResults.length > 0 && (
+                <div className="bg-black/30 rounded-lg p-3 flex flex-col gap-2">
+                  <p className="text-xs text-white/40 mb-1">בחר משחק להעתקת fixture_id:</p>
+                  {fixtureResults.map(f => (
+                    <button
+                      key={f.fixture_id}
+                      type="button"
+                      onClick={() => {
+                        setTestForm(prev => ({ ...prev, api_fixture_id: String(f.fixture_id) }))
+                        toast.success(`fixture_id ${f.fixture_id} הוגדר`)
+                      }}
+                      className="flex items-center justify-between text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-right transition-colors"
+                    >
+                      <code className="text-orange-300 font-mono">{f.fixture_id}</code>
+                      <span className="text-white/70">{f.home} vs {f.away}</span>
+                      <span className="text-white/30">{f.date?.slice(11,16)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </form>
           </div>
 
