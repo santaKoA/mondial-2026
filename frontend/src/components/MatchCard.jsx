@@ -263,6 +263,30 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
       )}
 
+      {/* Status badge */}
+      <div className="mt-3 flex justify-center">
+        {isFinished ? (
+          <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-1.5 text-sm text-green-400">
+            ✅ הסתיים <strong className="text-white text-base tracking-wide">{match.home_score} – {match.away_score}</strong>
+          </div>
+        ) : isKickedOff ? (
+          <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-1.5 text-sm text-red-300">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            לייב
+            {match.home_score != null && match.away_score != null && (
+              <>
+                <span className="w-px h-3.5 bg-red-500/30" />
+                <strong className="text-white text-base tracking-wide">{match.home_score} – {match.away_score}</strong>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/40">
+            ⏳ טרם החל
+          </div>
+        )}
+      </div>
+
       {!isKickedOff && !isFinished && (
         <div className="mt-3 border-t border-white/10 pt-2 text-center">
           <span className="text-xs text-white/25">👥 ניחושי הקבוצה ייחשפו בתחילת המשחק</span>
