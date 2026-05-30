@@ -160,12 +160,33 @@ async def manual_sync(_: models.User = Depends(auth_utils.get_admin_user)):
 
 
 @router.get("/sync/status")
-def sync_status(_: models.User = Depends(auth_utils.get_admin_user)):
+def sync_status(
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    # Find group-stage matches with known teams but missing fixture_id
+    unlinked = db.query(models.Match).filter(
+        models.Match.is_test == False,
+        models.Match.home_team_id.isnot(None),
+        models.Match.away_team_id.isnot(None),
+        models.Match.api_fixture_id.is_(None),
+    ).options(
+        joinedload(models.Match.home_team),
+        joinedload(models.Match.away_team),
+    ).all()
+
+    unlinked_list = [
+        f"{m.home_team.name} vs {m.away_team.name}"
+        for m in unlinked
+    ]
+
     return {
         "last_sync_at": results_sync.last_sync_at.isoformat() if results_sync.last_sync_at else None,
         "last_updated": results_sync.last_sync_updated,
         "error": results_sync.last_sync_error,
         "api_configured": bool(settings.FOOTBALL_DATA_TOKEN),
+        "unlinked_count": len(unlinked_list),
+        "unlinked_matches": unlinked_list,
     }
 
 

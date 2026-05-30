@@ -409,13 +409,23 @@ export default function AdminPage() {
         <h1 className="text-2xl font-black">🛠 פאנל ניהול</h1>
         <div className="flex items-center gap-3">
           {syncStatus && (
-            <div className="text-xs text-white/40 text-left">
+            <div className="text-xs text-white/40 text-left flex flex-col gap-0.5">
               {syncStatus.error ? (
                 <span className="text-red-400">{syncStatus.error}</span>
               ) : syncStatus.last_sync_at ? (
                 <span>סונכרן: {formatIsrael(syncStatus.last_sync_at)}</span>
               ) : (
                 <span>{syncStatus.api_configured ? 'טרם סונכרן' : 'API לא מוגדר'}</span>
+              )}
+              {syncStatus.unlinked_count > 0 && (
+                <details className="cursor-pointer">
+                  <summary className="text-orange-400">⚠️ {syncStatus.unlinked_count} משחקים ללא fixture_id</summary>
+                  <ul className="mt-1 space-y-0.5 text-white/50 pr-2">
+                    {syncStatus.unlinked_matches?.map(m => (
+                      <li key={m}>· {m}</li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           )}
