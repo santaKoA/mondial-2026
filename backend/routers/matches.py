@@ -36,7 +36,7 @@ def list_matches(
     q = db.query(models.Match).options(
         joinedload(models.Match.home_team),
         joinedload(models.Match.away_team),
-    )
+    ).filter(models.Match.is_test == False)
     if stage:
         q = q.filter(models.Match.stage == stage)
     matches = q.order_by(models.Match.scheduled_at, models.Match.match_number).all()

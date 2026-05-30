@@ -256,14 +256,116 @@ def _next_match_window() -> tuple[bool, float]:
         db.close()
 
 
+async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
+    """Fetch a single fixture by ID and update the corresponding match."""
+    global last_sync_at, last_sync_updated, last_sync_error
+
+    if not settings.FOOTBALL_API_KEY:
+        return {"error": "FOOTBALL_API_KEY לא מוגדר"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{API_URL}/fixtures",
+                params={"id": fixture_id},
+                headers=_headers(),
+            )
+        resp.raise_for_status()
+        fixtures = resp.json().get("response", [])
+    except Exception as e:
+        last_sync_error = str(e)
+        logger.error(f"sync_single_fixture error: {e}")
+        return {"error": str(e)}
+
+    if not fixtures:
+        return {"error": f"Fixture {fixture_id} לא נמצא ב-API"}
+
+    fixture = fixtures[0]
+    status = fixture["fixture"]["status"]["short"]
+    home_api = fixture["teams"]["home"]["name"]
+    away_api = fixture["teams"]["away"]["name"]
+
+    db = SessionLocal()
+    try:
+        match = db.query(models.Match).filter(models.Match.id == match_id).first()
+        if not match:
+            return {"error": "Match not found in DB"}
+
+        updated = False
+        if status in ("FT", "AET", "PEN"):
+            home_score = fixture["goals"]["home"]
+            away_score = fixture["goals"]["away"]
+            if home_score is not None and away_score is not None:
+                updated = _apply_result(db, match, home_score, away_score)
+        db.commit()
+    finally:
+        db.close()
+
+    last_sync_at = datetime.now(timezone.utc)
+    if updated:
+        last_sync_updated += 1
+
+    return {
+        "fixture_id": fixture_id,
+        "status": status,
+        "home": home_api,
+        "away": away_api,
+        "score": f"{fixture['goals']['home']}-{fixture['goals']['away']}",
+        "updated": updated,
+    }
+
+
+async def sync_test_matches() -> int:
+    """Sync all unfinished test matches that have an api_fixture_id."""
+    db = SessionLocal()
+    try:
+        test_matches = db.query(models.Match).filter(
+            models.Match.is_test == True,
+            models.Match.status != "finished",
+            models.Match.api_fixture_id.isnot(None),
+        ).all()
+        pairs = [(m.api_fixture_id, m.id) for m in test_matches]
+    finally:
+        db.close()
+
+    updated = 0
+    for fixture_id, match_id in pairs:
+        result = await sync_single_fixture(fixture_id, match_id)
+        if result.get("updated"):
+            updated += 1
+    return updated
+
+
+def _has_active_test_match() -> bool:
+    """Check if any test match is within its active window."""
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        upcoming = db.query(models.Match).filter(
+            models.Match.is_test == True,
+            models.Match.status != "finished",
+            models.Match.api_fixture_id.isnot(None),
+        ).all()
+        for m in upcoming:
+            delta = (m.scheduled_at - now).total_seconds()
+            if -1800 <= delta <= 7200:
+                return True
+        return False
+    finally:
+        db.close()
+
+
 async def polling_loop():
     """Background task: polls API-Football at the right cadence."""
     await asyncio.sleep(30)  # wait for startup to complete
     while True:
         try:
             is_active, sleep_secs = _next_match_window()
+            has_test = _has_active_test_match()
             if is_active:
                 await sync_results()
+            if has_test:
+                await sync_test_matches()
             await asyncio.sleep(sleep_secs)
         except asyncio.CancelledError:
             break

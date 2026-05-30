@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload, contains_eager
 from database import get_db
 import secrets
+import asyncio
+import httpx
+from datetime import datetime, timezone
 import models
 import schemas
 import auth as auth_utils
@@ -220,3 +223,120 @@ def delete_group(
     db.delete(group)
     db.commit()
     return {"ok": True}
+
+
+# ── Test Matches ──────────────────────────────────────────────────────────────
+
+async def _find_fixture_id(league_id: int, season: int, scheduled_at: datetime) -> int | None:
+    """Search api-football for a fixture by league+season+date, closest to scheduled_at."""
+    from config import settings
+    if not settings.FOOTBALL_API_KEY:
+        return None
+    date_str = scheduled_at.strftime("%Y-%m-%d")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{results_sync.API_URL}/fixtures",
+                params={"league": league_id, "season": season, "date": date_str},
+                headers={"x-apisports-key": settings.FOOTBALL_API_KEY},
+            )
+        resp.raise_for_status()
+        fixtures = resp.json().get("response", [])
+        if not fixtures:
+            return None
+        # Pick closest to scheduled_at
+        target = scheduled_at.replace(tzinfo=None)
+        def diff(f):
+            raw = f["fixture"]["date"]
+            dt = datetime.fromisoformat(raw)
+            if dt.tzinfo:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            return abs((dt - target).total_seconds())
+        best = min(fixtures, key=diff)
+        return best["fixture"]["id"]
+    except Exception:
+        return None
+
+
+@router.post("/test-match", response_model=schemas.TestMatchOut)
+async def create_test_match(
+    body: schemas.TestMatchCreate,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    # Generate a unique match_number well above normal range
+    max_num = db.query(models.Match).order_by(models.Match.match_number.desc()).first()
+    next_num = max((max_num.match_number if max_num else 0) + 1, 10000)
+
+    # scheduled_at as naive UTC
+    sat = body.scheduled_at
+    if sat.tzinfo:
+        sat = sat.astimezone(timezone.utc).replace(tzinfo=None)
+
+    fixture_id = body.api_fixture_id
+    if not fixture_id:
+        fixture_id = await _find_fixture_id(body.api_league_id, body.api_season, sat)
+
+    match = models.Match(
+        match_number=next_num,
+        stage=body.stage,
+        scheduled_at=sat,
+        status="upcoming",
+        is_test=True,
+        api_league_id=body.api_league_id,
+        api_season=body.api_season,
+        api_fixture_id=fixture_id,
+        test_home_name=body.home_name,
+        test_home_flag=body.home_flag,
+        test_away_name=body.away_name,
+        test_away_flag=body.away_flag,
+    )
+    db.add(match)
+    db.commit()
+    db.refresh(match)
+    return match
+
+
+@router.get("/test-matches", response_model=list[schemas.TestMatchOut])
+def list_test_matches(
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(models.Match).filter(models.Match.is_test == True)\
+        .order_by(models.Match.scheduled_at).all()
+
+
+@router.delete("/test-matches/{match_id}")
+def delete_test_match(
+    match_id: int,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    match = db.query(models.Match).filter(
+        models.Match.id == match_id,
+        models.Match.is_test == True,
+    ).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Test match not found")
+    db.query(models.Prediction).filter(models.Prediction.match_id == match_id).delete()
+    db.delete(match)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/test-matches/{match_id}/sync")
+async def sync_one_test_match(
+    match_id: int,
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    match = db.query(models.Match).filter(
+        models.Match.id == match_id,
+        models.Match.is_test == True,
+    ).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Test match not found")
+    if not match.api_fixture_id:
+        raise HTTPException(status_code=400, detail="אין fixture_id — הכנס ידנית")
+    result = await results_sync.sync_single_fixture(match.api_fixture_id, match.id)
+    return result

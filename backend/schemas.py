@@ -138,3 +138,34 @@ class ChangePasswordIn(BaseModel):
 
 class ResetPasswordIn(BaseModel):
     new_password: str
+
+
+class TestMatchCreate(BaseModel):
+    home_name: str
+    home_flag: str = "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+    away_name: str
+    away_flag: str = "🇫🇷"
+    scheduled_at: datetime
+    stage: str = "final"
+    api_league_id: int = 2       # 2 = UCL on api-football
+    api_season: int = 2025       # 2025-26 season → season=2025
+    api_fixture_id: Optional[int] = None  # if known; else auto-search
+
+
+class TestMatchOut(BaseModel):
+    id: int
+    match_number: int
+    test_home_name: Optional[str]
+    test_home_flag: Optional[str]
+    test_away_name: Optional[str]
+    test_away_flag: Optional[str]
+    scheduled_at: datetime
+    stage: str
+    status: str
+    home_score: Optional[int]
+    away_score: Optional[int]
+    api_fixture_id: Optional[int]
+    api_league_id: Optional[int]
+    api_season: Optional[int]
+
+    model_config = {"from_attributes": True}

@@ -151,25 +151,86 @@ export default function AdminPage() {
   const [syncing, setSyncing] = useState(false)
   const [deletingUser, setDeletingUser] = useState(null)
   const [resetPw, setResetPw] = useState(null) // { id, value }
+  // Test match state
+  const [testMatches, setTestMatches] = useState([])
+  const [testForm, setTestForm] = useState({
+    home_name: 'ארסנל', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    away_name: 'פריז סן ז\'רמן', away_flag: '🇫🇷',
+    scheduled_at: '', stage: 'final',
+    api_league_id: 2, api_season: 2025, api_fixture_id: '',
+  })
+  const [creatingTest, setCreatingTest] = useState(false)
+  const [syncingTest, setSyncingTest] = useState(null)
 
   async function loadData() {
     try {
-      const [mRes, tRes, uRes, gRes, sRes] = await Promise.all([
+      const [mRes, tRes, uRes, gRes, sRes, tmRes] = await Promise.all([
         api.get('/api/matches'),
         api.get('/api/admin/teams'),
         api.get('/api/admin/users'),
         api.get('/api/admin/groups'),
         api.get('/api/admin/sync/status'),
+        api.get('/api/admin/test-matches'),
       ])
       setMatches(mRes.data)
       setTeams(tRes.data)
       setUsers(uRes.data)
       setGroups(gRes.data)
       setSyncStatus(sRes.data)
+      setTestMatches(tmRes.data)
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה בטעינת נתוני הניהול')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleCreateTestMatch(e) {
+    e.preventDefault()
+    setCreatingTest(true)
+    try {
+      const payload = {
+        ...testForm,
+        api_league_id: Number(testForm.api_league_id),
+        api_season: Number(testForm.api_season),
+        api_fixture_id: testForm.api_fixture_id ? Number(testForm.api_fixture_id) : null,
+      }
+      const { data } = await api.post('/api/admin/test-match', payload)
+      setTestMatches(prev => [...prev, data])
+      toast.success(`✅ משחק טסט נוצר! fixture_id: ${data.api_fixture_id || 'לא נמצא'}`)
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setCreatingTest(false)
+    }
+  }
+
+  async function handleDeleteTestMatch(id) {
+    if (!window.confirm('למחוק את משחק הטסט?')) return
+    try {
+      await api.delete(`/api/admin/test-matches/${id}`)
+      setTestMatches(prev => prev.filter(m => m.id !== id))
+      toast.success('נמחק')
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    }
+  }
+
+  async function handleSyncTestMatch(id) {
+    setSyncingTest(id)
+    try {
+      const { data } = await api.post(`/api/admin/test-matches/${id}/sync`)
+      if (data.error) {
+        toast.error(data.error)
+      } else {
+        toast.success(`${data.home} ${data.score} ${data.away} · ${data.status}${data.updated ? ' · עודכן!' : ''}`)
+        const tmRes = await api.get('/api/admin/test-matches')
+        setTestMatches(tmRes.data)
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'שגיאה')
+    } finally {
+      setSyncingTest(null)
     }
   }
 
@@ -301,16 +362,17 @@ export default function AdminPage() {
       </div>
 
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
-        {['groups', 'matches', 'finished', 'special', 'users'].map(tab => (
+        {['groups', 'matches', 'finished', 'special', 'users', 'test'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${activeTab === tab ? 'bg-green-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${activeTab === tab ? (tab === 'test' ? 'bg-orange-500 text-black' : 'bg-green-500 text-black') : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
           >
             {tab === 'groups' ? `🏷️ קבוצות (${groups.length})`
               : tab === 'matches' ? `⏳ ממתינים (${pendingMatches.length})`
               : tab === 'finished' ? `✅ גמורים (${finishedMatches.length})`
               : tab === 'special' ? '⭐ מיוחדים'
+              : tab === 'test' ? `🧪 טסט (${testMatches.length})`
               : `👥 משתמשים (${users.length})`}
           </button>
         ))}
@@ -572,6 +634,123 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {activeTab === 'test' && (
+        <div className="flex flex-col gap-5">
+          <div className="card border-orange-500/30 bg-orange-500/5">
+            <h2 className="font-bold text-orange-300 mb-4">🧪 צור משחק טסט</h2>
+            <form onSubmit={handleCreateTestMatch} className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">קבוצת בית</label>
+                  <div className="flex gap-2">
+                    <input value={testForm.home_flag} onChange={e => setTestForm(f => ({ ...f, home_flag: e.target.value }))}
+                      className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
+                    <input value={testForm.home_name} onChange={e => setTestForm(f => ({ ...f, home_name: e.target.value }))}
+                      placeholder="שם קבוצת בית"
+                      className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">קבוצת חוץ</label>
+                  <div className="flex gap-2">
+                    <input value={testForm.away_flag} onChange={e => setTestForm(f => ({ ...f, away_flag: e.target.value }))}
+                      className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
+                    <input value={testForm.away_name} onChange={e => setTestForm(f => ({ ...f, away_name: e.target.value }))}
+                      placeholder="שם קבוצת חוץ"
+                      className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">שעת קיקאוף (שעון ישראל)</label>
+                  <input type="datetime-local" value={testForm.scheduled_at}
+                    onChange={e => setTestForm(f => ({ ...f, scheduled_at: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">שלב</label>
+                  <select value={testForm.stage} onChange={e => setTestForm(f => ({ ...f, stage: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
+                    <option value="final">גמר</option>
+                    <option value="semi_final">חצי גמר</option>
+                    <option value="quarter_final">רבע גמר</option>
+                    <option value="group">שלב בתים</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">League ID (API)</label>
+                  <input type="number" value={testForm.api_league_id}
+                    onChange={e => setTestForm(f => ({ ...f, api_league_id: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Season</label>
+                  <input type="number" value={testForm.api_season}
+                    onChange={e => setTestForm(f => ({ ...f, api_season: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Fixture ID (אופציונלי)</label>
+                  <input type="number" value={testForm.api_fixture_id}
+                    onChange={e => setTestForm(f => ({ ...f, api_fixture_id: e.target.value }))}
+                    placeholder="אוטומטי אם ריק"
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400 placeholder-white/20" />
+                </div>
+              </div>
+              <button type="submit" disabled={creatingTest}
+                className="bg-orange-500 hover:bg-orange-400 text-black font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                {creatingTest ? '⏳ יוצר + מחפש fixture...' : '🧪 צור משחק טסט'}
+              </button>
+            </form>
+          </div>
+
+          {testMatches.length === 0 ? (
+            <div className="text-center py-8 text-white/30">אין משחקי טסט</div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {testMatches.map(m => (
+                <div key={m.id} className="card border-orange-500/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3 text-lg font-bold">
+                      <span>{m.test_home_flag} {m.test_home_name}</span>
+                      <span className="text-white/40 font-normal text-sm">vs</span>
+                      <span>{m.test_away_name} {m.test_away_flag}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      m.status === 'finished' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-300'
+                    }`}>
+                      {m.status === 'finished' ? `✅ ${m.home_score}-${m.away_score}` : '⏳ ממתין'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-white/40 flex flex-wrap gap-x-4 gap-y-1 mb-3">
+                    <span>📅 {new Date(m.scheduled_at + 'Z').toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
+                    <span>🔑 fixture_id: <code className="text-orange-300">{m.api_fixture_id || '—'}</code></span>
+                    <span>🏆 league: {m.api_league_id} · season: {m.api_season}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSyncTestMatch(m.id)}
+                      disabled={syncingTest === m.id || !m.api_fixture_id}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      {syncingTest === m.id ? '⏳' : '🔄'} סנכרן מ-API
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTestMatch(m.id)}
+                      className="bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      🗑️ מחק
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

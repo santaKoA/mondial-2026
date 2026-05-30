@@ -45,6 +45,15 @@ class Match(Base):
     home_score = Column(Integer, nullable=True)
     away_score = Column(Integer, nullable=True)
     status = Column(String, nullable=False, default="upcoming")
+    # Test match fields
+    is_test = Column(Boolean, nullable=False, default=False)
+    api_fixture_id = Column(Integer, nullable=True)
+    api_league_id = Column(Integer, nullable=True)
+    api_season = Column(Integer, nullable=True)
+    test_home_name = Column(String, nullable=True)
+    test_home_flag = Column(String, nullable=True)
+    test_away_name = Column(String, nullable=True)
+    test_away_flag = Column(String, nullable=True)
 
     home_team = relationship("Team", foreign_keys=[home_team_id])
     away_team = relationship("Team", foreign_keys=[away_team_id])

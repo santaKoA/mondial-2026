@@ -18,6 +18,14 @@ def _run_startup_migrations():
         for ddl in [
             "ALTER TABLE league_groups ADD COLUMN owner_id INTEGER REFERENCES users(id)",
             "ALTER TABLE users ADD COLUMN password_hash TEXT",
+            "ALTER TABLE matches ADD COLUMN is_test BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE matches ADD COLUMN api_fixture_id INTEGER",
+            "ALTER TABLE matches ADD COLUMN api_league_id INTEGER",
+            "ALTER TABLE matches ADD COLUMN api_season INTEGER",
+            "ALTER TABLE matches ADD COLUMN test_home_name TEXT",
+            "ALTER TABLE matches ADD COLUMN test_home_flag TEXT",
+            "ALTER TABLE matches ADD COLUMN test_away_name TEXT",
+            "ALTER TABLE matches ADD COLUMN test_away_flag TEXT",
         ]:
             try:
                 conn.execute(text(ddl))
