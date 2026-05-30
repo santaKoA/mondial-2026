@@ -14,12 +14,9 @@
 
   .score-input::-webkit-inner-spin-button,
   .score-input::-webkit-outer-spin-button {
-    appearance: none;
-    margin: 0;
-  }
-
-  .score-input {
-    appearance: textfield;
+    opacity: 1;
+    height: 2.5rem;
+    cursor: pointer;
   }
 }
 
@@ -37,6 +34,7 @@
   }
 
   .score-input {
-    @apply w-14 h-14 sm:w-16 sm:h-16 text-center text-3xl sm:text-4xl font-black bg-black/40 border-2 border-white/30 rounded-lg focus:outline-none focus:border-green-400 text-white shadow-inner;
+    @apply w-16 h-14 sm:w-20 sm:h-16 text-center text-3xl sm:text-4xl font-black bg-black/40 border-2 border-white/30 rounded-lg focus:outline-none focus:border-green-400 text-white shadow-inner;
+    direction: ltr;
   }
 }
