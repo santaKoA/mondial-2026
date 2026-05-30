@@ -342,58 +342,62 @@ async def sync_test_matches() -> int:
     return updated
 
 
-def _next_match_window() -> tuple[bool, float]:
-    """Returns (is_active_window, seconds_to_sleep)."""
+def _next_sync_point() -> float:
+    """
+    Return seconds to sleep until the next sync point.
+    Sync points per match: kickoff+45min and kickoff+120min.
+    Multiple matches close together (within 15min) share one API call.
+    Returns seconds to sleep (>0 = sleep, <=0 = sync now).
+    """
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc).replace(tzinfo=None)
-        upcoming = (
-            db.query(models.Match)
-            .filter(models.Match.status != "finished")
-            .filter(models.Match.home_team_id.isnot(None))
-            .filter(models.Match.is_test == False)
-            .all()
-        )
-        for m in upcoming:
-            delta = (m.scheduled_at - now).total_seconds()
-            if -1800 <= delta <= 7200:
-                return True, 600
-        return False, 1800
-    finally:
-        db.close()
-
-
-def _has_active_test_match() -> bool:
-    """Check if any test match is within its active window."""
-    db = SessionLocal()
-    try:
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        upcoming = db.query(models.Match).filter(
-            models.Match.is_test == True,
+        unfinished = db.query(models.Match).filter(
             models.Match.status != "finished",
-            models.Match.api_fixture_id.isnot(None),
+            models.Match.home_team_id.isnot(None),
         ).all()
-        for m in upcoming:
-            delta = (m.scheduled_at - now).total_seconds()
-            if -1800 <= delta <= 7200:
-                return True
-        return False
+
+        points = []
+        for m in unfinished:
+            kickoff = m.scheduled_at
+            for offset_min in (45, 120):
+                pt = kickoff + timedelta(minutes=offset_min)
+                # Only consider future points or points we just missed (within 10 min)
+                if pt >= now - timedelta(minutes=10):
+                    points.append(pt)
+
+        if not points:
+            return 3600  # no matches — check again in 1 hour
+
+        next_pt = min(points)
+        return (next_pt - now).total_seconds()
     finally:
         db.close()
 
 
 async def polling_loop():
-    """Background task: polls football-data.org at the right cadence."""
-    await asyncio.sleep(30)
+    """
+    Background task: syncs at kickoff+45min and kickoff+120min for each match.
+    Each sync_results() call fetches ALL matches in one API request —
+    so multiple matches on the same day share the same call.
+    Max ~2 API calls per match-day, well within the 10/day free-tier limit.
+    """
+    await asyncio.sleep(30)  # wait for startup
     while True:
         try:
-            is_active, sleep_secs = _next_match_window()
-            has_test = _has_active_test_match()
-            if is_active:
-                await sync_results()
-            if has_test:
-                await sync_test_matches()
-            await asyncio.sleep(sleep_secs)
+            secs = _next_sync_point()
+
+            if secs > 60:
+                # Sleep until ~1 minute before next sync point
+                await asyncio.sleep(min(secs - 60, 3600))
+                continue
+
+            # We're at a sync point — fire!
+            logger.info("Sync point reached — syncing results")
+            await sync_results()
+            await sync_test_matches()
+            await asyncio.sleep(120)  # 2-min cooldown before recalculating
+
         except asyncio.CancelledError:
             break
         except Exception as e:
