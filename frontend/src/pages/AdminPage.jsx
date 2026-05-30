@@ -427,6 +427,20 @@ export default function AdminPage() {
             <span className={syncing ? 'animate-spin' : ''}>🔄</span>
             {syncing ? 'מסנכרן...' : 'סנכרן תוצאות'}
           </button>
+          <button
+            onClick={async () => {
+              try {
+                const { data } = await api.post('/api/admin/link-fixtures')
+                toast.success(`🔗 קושרו ${data.linked}/${data.total_api} משחקים${data.not_found?.length ? ` · לא נמצאו: ${data.not_found.length}` : ''}`)
+                if (data.not_found?.length) console.warn('לא נמצאו:', data.not_found)
+              } catch (e) {
+                toast.error(e.response?.data?.detail || 'שגיאה')
+              }
+            }}
+            className="flex items-center gap-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+          >
+            🔗 קשר fixtures
+          </button>
         </div>
       </div>
 
@@ -754,7 +768,10 @@ export default function AdminPage() {
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">תחרות (CL / WC)</label>
                   <select value={testForm.api_league_id}
-                    onChange={e => setTestForm(f => ({ ...f, api_league_id: e.target.value }))}
+                    onChange={e => {
+                      const comp = e.target.value
+                      setTestForm(f => ({ ...f, api_league_id: comp, api_season: comp === 'WC' ? 2026 : 2025 }))
+                    }}
                     className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
                     <option value="CL">🏆 CL — ליגת אלופות</option>
                     <option value="WC">🌍 WC — מונדיאל</option>

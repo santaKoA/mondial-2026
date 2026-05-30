@@ -78,8 +78,10 @@
 19.7: מנצחת משחק 101 - מנצחת משחק 102 (22:00, ניו יורק)
 
 
-נדחף ✅
+יש גם באג — שורה 249 ממירה "CL" למספר (NaN). צריך לתקן זאת גם בbackend. אבל קודם — האם עשית hard refresh בדפדפן? (Cmd+Shift+R / Ctrl+Shift+R)
 
-football-data.org — יש Free tier שכולל World Cup. צריך רישום, מקבל API key חינמי. הפורמט שונה מ-api-football אז יצריך שינוי בקוד הסנכרון, אבל זה אפשרי.
+בינתיים אתקן את הבאג:
 
-לפני ה-11.6 כדאי לבדוק אם ה-Free tier שלהם מכסה את המונדיאל 2026 — אם כן, נעבור אליו. רוצה שאבדוק את זה ואבנה את הסנכרון מחדש על football-data.org?
+
+Edited a file, ran a command
+נדחף. עכשיו עשה hard refresh (Cmd+Shift+R במק / Ctrl+Shift+R בווינדוס) — הדרופדאון יופיע. אם עדיין לא, המתן עוד דקה לCloudflare Pages.

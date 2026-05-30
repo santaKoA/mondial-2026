@@ -98,20 +98,24 @@ def _to_hebrew(name: str) -> str | None:
     return TEAM_NAME_MAP.get(name)
 
 
-def _apply_result(db, match: models.Match, home_score: int, away_score: int) -> bool:
-    """Update match result and recalculate predictions. Returns True if changed."""
-    if match.home_score == home_score and match.away_score == away_score and match.status == "finished":
+def _apply_result(db, match: models.Match, home_score: int, away_score: int, finished: bool = True) -> bool:
+    """Update match score. If finished=True, also calculates points. Returns True if changed."""
+    new_status = "finished" if finished else "live"
+
+    if (match.home_score == home_score and match.away_score == away_score
+            and match.status == new_status):
         return False
 
     match.home_score = home_score
     match.away_score = away_score
-    match.status = "finished"
+    match.status = new_status
 
-    predictions = db.query(models.Prediction).filter(models.Prediction.match_id == match.id).all()
-    for pred in predictions:
-        pred.points = scoring.calculate_points(
-            match.stage, home_score, away_score, pred.home_score, pred.away_score
-        )
+    if finished:
+        predictions = db.query(models.Prediction).filter(models.Prediction.match_id == match.id).all()
+        for pred in predictions:
+            pred.points = scoring.calculate_points(
+                match.stage, home_score, away_score, pred.home_score, pred.away_score
+            )
     return True
 
 
@@ -167,50 +171,77 @@ async def sync_results() -> dict:
     teams_assigned = 0
     unknown_teams: list[str] = []
 
+    LIVE_STATUSES = {"IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY"}
+
     db = SessionLocal()
     try:
+        # Build fixture_id → DB match map for fast lookup
+        fixture_id_map: dict[int, models.Match] = {}
+        linked = db.query(models.Match).filter(
+            models.Match.api_fixture_id.isnot(None),
+            models.Match.is_test == False,
+        ).all()
+        for lm in linked:
+            fixture_id_map[lm.api_fixture_id] = lm
+
         for m in matches_api:
-            status = m["status"]  # SCHEDULED, IN_PLAY, PAUSED, FINISHED, etc.
+            status = m["status"]
+            fixture_id = m["id"]
             home_api = m["homeTeam"]["name"]
             away_api = m["awayTeam"]["name"]
 
-            home_heb = _to_hebrew(home_api)
-            away_heb = _to_hebrew(away_api)
-            if not home_heb or not away_heb:
-                unknown_teams.append(f"{home_api} / {away_api}")
-                continue
+            # Try fixture_id match first (most reliable)
+            match = fixture_id_map.get(fixture_id)
 
-            home_team = db.query(models.Team).filter_by(name=home_heb).first()
-            away_team = db.query(models.Team).filter_by(name=away_heb).first()
-            if not home_team or not away_team:
-                continue
-
-            # Find DB match by team IDs (group stage + already-assigned knockout)
-            match = db.query(models.Match).filter_by(
-                home_team_id=home_team.id,
-                away_team_id=away_team.id,
-                is_test=False,
-            ).first()
-
-            # For knockout: match by scheduled_at and auto-assign teams
+            # Fall back to team name matching
             if not match:
-                match_dt = _parse_match_dt(m)
-                match = _find_knockout_match_by_time(db, match_dt)
-                if match:
-                    match.home_team_id = home_team.id
-                    match.away_team_id = away_team.id
-                    teams_assigned += 1
-                    logger.info(f"Auto-assigned {home_heb} vs {away_heb}")
+                home_heb = _to_hebrew(home_api)
+                away_heb = _to_hebrew(away_api)
+                if not home_heb or not away_heb:
+                    unknown_teams.append(f"{home_api} / {away_api}")
+                    continue
+
+                home_team = db.query(models.Team).filter_by(name=home_heb).first()
+                away_team = db.query(models.Team).filter_by(name=away_heb).first()
+                if not home_team or not away_team:
+                    continue
+
+                match = db.query(models.Match).filter_by(
+                    home_team_id=home_team.id,
+                    away_team_id=away_team.id,
+                    is_test=False,
+                ).first()
+
+                # Knockout: match by time and auto-assign
+                if not match:
+                    match_dt = _parse_match_dt(m)
+                    match = _find_knockout_match_by_time(db, match_dt)
+                    if match:
+                        match.home_team_id = home_team.id
+                        match.away_team_id = away_team.id
+                        # Store fixture_id for future syncs
+                        match.api_fixture_id = fixture_id
+                        teams_assigned += 1
+                        logger.info(f"Auto-assigned {home_heb} vs {away_heb}")
 
             if not match:
                 continue
 
-            # Update score if finished
+            # Update score — finished or live
             if status == "FINISHED":
                 home_score = m["score"]["fullTime"]["home"]
                 away_score = m["score"]["fullTime"]["away"]
                 if home_score is not None and away_score is not None:
-                    if _apply_result(db, match, home_score, away_score):
+                    if _apply_result(db, match, home_score, away_score, finished=True):
+                        scores_updated += 1
+            elif status in LIVE_STATUSES:
+                # Live score (halftime or current score)
+                ht = m["score"].get("halfTime", {})
+                ft = m["score"].get("fullTime", {})
+                home_score = ft.get("home") or ht.get("home")
+                away_score = ft.get("away") or ht.get("away")
+                if home_score is not None and away_score is not None:
+                    if _apply_result(db, match, home_score, away_score, finished=False):
                         scores_updated += 1
 
         db.commit()
@@ -254,8 +285,12 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
     status = m["status"]
     home_api = m["homeTeam"]["name"]
     away_api = m["awayTeam"]["name"]
-    home_score = m["score"]["fullTime"]["home"]
-    away_score = m["score"]["fullTime"]["away"]
+    ft = m["score"].get("fullTime", {})
+    ht = m["score"].get("halfTime", {})
+    home_score = ft.get("home") or ht.get("home")
+    away_score = ft.get("away") or ht.get("away")
+
+    LIVE_STATUSES = {"IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY"}
 
     db = SessionLocal()
     try:
@@ -265,7 +300,9 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
 
         updated = False
         if status == "FINISHED" and home_score is not None and away_score is not None:
-            updated = _apply_result(db, match, home_score, away_score)
+            updated = _apply_result(db, match, home_score, away_score, finished=True)
+        elif status in LIVE_STATUSES and home_score is not None and away_score is not None:
+            updated = _apply_result(db, match, home_score, away_score, finished=False)
         db.commit()
     finally:
         db.close()

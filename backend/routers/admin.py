@@ -164,7 +164,68 @@ def sync_status(_: models.User = Depends(auth_utils.get_admin_user)):
         "last_sync_at": results_sync.last_sync_at.isoformat() if results_sync.last_sync_at else None,
         "last_updated": results_sync.last_sync_updated,
         "error": results_sync.last_sync_error,
-        "api_configured": bool(results_sync.settings.FOOTBALL_API_KEY),
+        "api_configured": bool(settings.FOOTBALL_DATA_TOKEN),
+    }
+
+
+@router.post("/link-fixtures")
+async def link_fixtures(
+    _: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch all WC fixtures from football-data.org and store their IDs in our DB matches."""
+    from config import settings as cfg
+    if not cfg.FOOTBALL_DATA_TOKEN:
+        raise HTTPException(status_code=400, detail="FOOTBALL_DATA_TOKEN לא מוגדר")
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{results_sync.API_URL}/competitions/WC/matches",
+                params={"season": 2026},
+                headers={"X-Auth-Token": cfg.FOOTBALL_DATA_TOKEN},
+            )
+        resp.raise_for_status()
+        api_matches = resp.json().get("matches", [])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    linked = 0
+    not_found = []
+
+    for m in api_matches:
+        home_api = m["homeTeam"]["name"]
+        away_api = m["awayTeam"]["name"]
+        fixture_id = m["id"]
+
+        home_heb = results_sync.TEAM_NAME_MAP.get(home_api)
+        away_heb = results_sync.TEAM_NAME_MAP.get(away_api)
+        if not home_heb or not away_heb:
+            not_found.append(f"{home_api} / {away_api}")
+            continue
+
+        home_team = db.query(models.Team).filter_by(name=home_heb).first()
+        away_team = db.query(models.Team).filter_by(name=away_heb).first()
+        if not home_team or not away_team:
+            not_found.append(f"{home_api} / {away_api} (no team in DB)")
+            continue
+
+        match = db.query(models.Match).filter_by(
+            home_team_id=home_team.id,
+            away_team_id=away_team.id,
+            is_test=False,
+        ).first()
+        if match:
+            match.api_fixture_id = fixture_id
+            match.api_league_id = 2
+            match.api_season = 2026
+            linked += 1
+
+    db.commit()
+    return {
+        "linked": linked,
+        "total_api": len(api_matches),
+        "not_found": not_found,
     }
 
 
@@ -270,14 +331,11 @@ async def search_fixtures(
     if not settings.FOOTBALL_DATA_TOKEN:
         raise HTTPException(status_code=400, detail="FOOTBALL_DATA_TOKEN לא מוגדר")
     try:
-        params: dict = {"season": season}
-        if date:
-            params["dateFrom"] = date
-            params["dateTo"] = date
-        async with httpx.AsyncClient(timeout=20) as client:
+        # Fetch ALL matches for the season, filter by date locally (more reliable)
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
                 f"{results_sync.API_URL}/competitions/{competition}/matches",
-                params=params,
+                params={"season": season},
                 headers={"X-Auth-Token": settings.FOOTBALL_DATA_TOKEN},
             )
         resp.raise_for_status()
@@ -287,6 +345,9 @@ async def search_fixtures(
         for m in matches:
             home = m["homeTeam"]["name"]
             away = m["awayTeam"]["name"]
+            match_date = m["utcDate"][:10]  # YYYY-MM-DD
+            if date and match_date != date:
+                continue
             if team and team.lower() not in home.lower() and team.lower() not in away.lower():
                 continue
             results.append({
