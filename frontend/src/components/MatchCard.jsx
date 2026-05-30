@@ -263,7 +263,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
                   {p.home_score != null
                     ? <span className={`font-medium ${
                         p.points != null
-                          ? p.points >= (match.stage === 'group' ? 3 : match.stage === 'final' ? 10 : 5)
+                          ? p.points >= (['semi_final', 'third_place', 'final'].includes(match.stage) ? 10 : match.stage === 'group' ? 3 : 5)
                             ? 'text-green-400'
                             : p.points > 0 ? 'text-yellow-400' : 'text-white/50'
                           : 'text-white/70'

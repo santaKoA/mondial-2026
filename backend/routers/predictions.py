@@ -81,11 +81,11 @@ def group_predictions(
     if not user_group_ids:
         return []
 
-    # Collect all unique member IDs across all those groups
-    all_member_ids = set()
-    for gid in user_group_ids:
-        for ug in db.query(models.UserGroup).filter(models.UserGroup.group_id == gid).all():
-            all_member_ids.add(ug.user_id)
+    # Collect all unique member IDs across all those groups — single query
+    all_member_ids = {
+        ug.user_id for ug in
+        db.query(models.UserGroup).filter(models.UserGroup.group_id.in_(user_group_ids)).all()
+    }
 
     all_users = {
         u.id: u.name

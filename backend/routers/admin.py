@@ -214,6 +214,8 @@ def delete_group(
     group = db.query(models.Group).filter(models.Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
+    # Null out primary group reference so users don't have a dangling FK
+    db.query(models.User).filter(models.User.group_id == group_id).update({"group_id": None})
     db.query(models.UserGroup).filter(models.UserGroup.group_id == group_id).delete()
     db.delete(group)
     db.commit()

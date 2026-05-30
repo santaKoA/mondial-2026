@@ -238,13 +238,14 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteGroup(id) {
+  async function deleteGroup(id, name) {
+    if (!window.confirm(`למחוק את הקבוצה "${name}"? פעולה זו תסיר את כל החברים ממנה ולא ניתנת לביטול.`)) return
     try {
       await api.delete(`/api/admin/groups/${id}`)
       setGroups(prev => prev.filter(g => g.id !== id))
       toast.success('קבוצה נמחקה')
     } catch (e) {
-      toast.error('שגיאה')
+      toast.error(e.response?.data?.detail || 'שגיאה')
     }
   }
 
@@ -376,7 +377,7 @@ export default function AdminPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
-                          onClick={() => deleteGroup(g.id)}
+                          onClick={() => deleteGroup(g.id, g.name)}
                           className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
                         >
                           מחק

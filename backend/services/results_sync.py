@@ -240,7 +240,7 @@ def _next_match_window() -> tuple[bool, float]:
     """
     db = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC to match DB storage
         upcoming = (
             db.query(models.Match)
             .filter(models.Match.status != "finished")
