@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     TOURNAMENT_START: str = "2026-06-11T19:00:00"  # 22:00 Israel time (UTC+3)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 90
-    FOOTBALL_API_KEY: str = ""
+    FOOTBALL_API_KEY: str = ""       # legacy api-football (unused)
+    FOOTBALL_DATA_TOKEN: str = ""    # football-data.org token
 
     model_config = {"env_file": ".env"}
 

@@ -1,7 +1,7 @@
 """
-Fetches finished match results from API-Football and updates the DB.
-API: https://v3.football.api-sports.io  (league=1, season=2026)
-Free tier: 100 calls/day — we poll every 10min during match windows only.
+Fetches match results from football-data.org and updates the DB.
+API: https://api.football-data.org/v4
+Free tier: WC + CL included, 10 req/min.
 """
 import httpx
 import asyncio
@@ -15,11 +15,11 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://v3.football.api-sports.io"
-WC_LEAGUE = 1
+API_URL = "https://api.football-data.org/v4"
+WC_CODE = "WC"
 WC_SEASON = 2026
 
-# Map API (English) team names → Hebrew names in our DB
+# Map football-data.org English team names → Hebrew names in our DB
 TEAM_NAME_MAP: dict[str, str] = {
     "Mexico": "מקסיקו",
     "Korea Republic": "דרום קוריאה",
@@ -91,13 +91,11 @@ last_sync_error: str | None = None
 
 
 def _headers() -> dict:
-    return {
-        "x-apisports-key": settings.FOOTBALL_API_KEY,
-    }
+    return {"X-Auth-Token": settings.FOOTBALL_DATA_TOKEN}
 
 
-def _to_hebrew(api_name: str) -> str | None:
-    return TEAM_NAME_MAP.get(api_name)
+def _to_hebrew(name: str) -> str | None:
+    return TEAM_NAME_MAP.get(name)
 
 
 def _apply_result(db, match: models.Match, home_score: int, away_score: int) -> bool:
@@ -117,66 +115,64 @@ def _apply_result(db, match: models.Match, home_score: int, away_score: int) -> 
     return True
 
 
-def _parse_fixture_dt(fixture: dict) -> datetime:
-    raw = fixture["fixture"]["date"]
-    dt = datetime.fromisoformat(raw)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).replace(tzinfo=timezone.utc)
+def _parse_match_dt(m: dict) -> datetime:
+    raw = m["utcDate"]
+    dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
-def _find_knockout_match_by_time(db, fixture_dt: datetime) -> models.Match | None:
-    """Find the unassigned knockout match closest to fixture_dt (within ±2h)."""
+def _find_knockout_match_by_time(db, match_dt: datetime) -> models.Match | None:
+    """Find unassigned knockout match closest to match_dt (within ±2h)."""
     window = timedelta(hours=2)
-    fixture_dt_naive = fixture_dt.replace(tzinfo=None)
     candidates = (
         db.query(models.Match)
         .filter(
             models.Match.stage != "group",
             models.Match.home_team_id.is_(None),
-            models.Match.scheduled_at >= fixture_dt_naive - window,
-            models.Match.scheduled_at <= fixture_dt_naive + window,
+            models.Match.is_test == False,
+            models.Match.scheduled_at >= match_dt - window,
+            models.Match.scheduled_at <= match_dt + window,
         )
         .all()
     )
     if not candidates:
         return None
-    return min(candidates, key=lambda m: abs((m.scheduled_at - fixture_dt_naive).total_seconds()))
+    return min(candidates, key=lambda m: abs((m.scheduled_at - match_dt).total_seconds()))
 
 
 async def sync_results() -> dict:
-    """Fetch all WC fixtures from API, assign knockout teams + update scores."""
+    """Fetch all WC fixtures from football-data.org, assign knockout teams + update scores."""
     global last_sync_at, last_sync_updated, last_sync_error
 
-    if not settings.FOOTBALL_API_KEY:
-        last_sync_error = "FOOTBALL_API_KEY לא מוגדר"
+    if not settings.FOOTBALL_DATA_TOKEN:
+        last_sync_error = "FOOTBALL_DATA_TOKEN לא מוגדר"
         return {"error": last_sync_error}
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.get(
-                f"{API_URL}/fixtures",
-                params={"league": WC_LEAGUE, "season": WC_SEASON},
+                f"{API_URL}/competitions/{WC_CODE}/matches",
+                params={"season": WC_SEASON},
                 headers=_headers(),
             )
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
         last_sync_error = str(e)
-        logger.error(f"API-Football fetch error: {e}")
+        logger.error(f"football-data.org fetch error: {e}")
         return {"error": str(e)}
 
-    fixtures = data.get("response", [])
+    matches_api = data.get("matches", [])
     scores_updated = 0
     teams_assigned = 0
     unknown_teams: list[str] = []
 
     db = SessionLocal()
     try:
-        for fixture in fixtures:
-            home_api = fixture["teams"]["home"]["name"]
-            away_api = fixture["teams"]["away"]["name"]
-            status = fixture["fixture"]["status"]["short"]
+        for m in matches_api:
+            status = m["status"]  # SCHEDULED, IN_PLAY, PAUSED, FINISHED, etc.
+            home_api = m["homeTeam"]["name"]
+            away_api = m["awayTeam"]["name"]
 
             home_heb = _to_hebrew(home_api)
             away_heb = _to_hebrew(away_api)
@@ -189,29 +185,30 @@ async def sync_results() -> dict:
             if not home_team or not away_team:
                 continue
 
-            # Try to find our DB match by team IDs first (group stage + already-assigned knockout)
+            # Find DB match by team IDs (group stage + already-assigned knockout)
             match = db.query(models.Match).filter_by(
                 home_team_id=home_team.id,
                 away_team_id=away_team.id,
+                is_test=False,
             ).first()
 
             # For knockout: match by scheduled_at and auto-assign teams
             if not match:
-                fixture_dt = _parse_fixture_dt(fixture)
-                match = _find_knockout_match_by_time(db, fixture_dt)
+                match_dt = _parse_match_dt(m)
+                match = _find_knockout_match_by_time(db, match_dt)
                 if match:
                     match.home_team_id = home_team.id
                     match.away_team_id = away_team.id
                     teams_assigned += 1
-                    logger.info(f"Auto-assigned {home_heb} vs {away_heb} to match #{match.match_number}")
+                    logger.info(f"Auto-assigned {home_heb} vs {away_heb}")
 
             if not match:
                 continue
 
             # Update score if finished
-            if status in ("FT", "AET", "PEN"):
-                home_score = fixture["goals"]["home"]
-                away_score = fixture["goals"]["away"]
+            if status == "FINISHED":
+                home_score = m["score"]["fullTime"]["home"]
+                away_score = m["score"]["fullTime"]["away"]
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score):
                         scores_updated += 1
@@ -225,65 +222,40 @@ async def sync_results() -> dict:
     last_sync_error = None
 
     if unknown_teams:
-        logger.warning(f"Unknown team names from API: {set(unknown_teams)}")
+        logger.warning(f"Unknown team names: {set(unknown_teams)}")
 
     return {
         "scores_updated": scores_updated,
         "teams_assigned": teams_assigned,
-        "total_fixtures": len(fixtures),
+        "total_fixtures": len(matches_api),
     }
 
 
-def _next_match_window() -> tuple[bool, float]:
-    """Returns (is_active_window, seconds_to_sleep).
-    Active window: -30min to +120min around any unfinished match.
-    """
-    db = SessionLocal()
-    try:
-        now = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC to match DB storage
-        upcoming = (
-            db.query(models.Match)
-            .filter(models.Match.status != "finished")
-            .filter(models.Match.home_team_id.isnot(None))
-            .all()
-        )
-        for m in upcoming:
-            delta = (m.scheduled_at - now).total_seconds()
-            if -1800 <= delta <= 7200:  # -30min to +2h
-                return True, 600  # poll every 10 min
-        return False, 1800  # no active/upcoming match → 30min sleep
-    finally:
-        db.close()
-
-
 async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
-    """Fetch a single fixture by ID and update the corresponding match."""
+    """Fetch a single match by ID from football-data.org and update the test match."""
     global last_sync_at, last_sync_updated, last_sync_error
 
-    if not settings.FOOTBALL_API_KEY:
-        return {"error": "FOOTBALL_API_KEY לא מוגדר"}
+    if not settings.FOOTBALL_DATA_TOKEN:
+        return {"error": "FOOTBALL_DATA_TOKEN לא מוגדר"}
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
-                f"{API_URL}/fixtures",
-                params={"id": fixture_id},
+                f"{API_URL}/matches/{fixture_id}",
                 headers=_headers(),
             )
         resp.raise_for_status()
-        fixtures = resp.json().get("response", [])
+        m = resp.json()
     except Exception as e:
         last_sync_error = str(e)
         logger.error(f"sync_single_fixture error: {e}")
         return {"error": str(e)}
 
-    if not fixtures:
-        return {"error": f"Fixture {fixture_id} לא נמצא ב-API"}
-
-    fixture = fixtures[0]
-    status = fixture["fixture"]["status"]["short"]
-    home_api = fixture["teams"]["home"]["name"]
-    away_api = fixture["teams"]["away"]["name"]
+    status = m["status"]
+    home_api = m["homeTeam"]["name"]
+    away_api = m["awayTeam"]["name"]
+    home_score = m["score"]["fullTime"]["home"]
+    away_score = m["score"]["fullTime"]["away"]
 
     db = SessionLocal()
     try:
@@ -292,11 +264,8 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
             return {"error": "Match not found in DB"}
 
         updated = False
-        if status in ("FT", "AET", "PEN"):
-            home_score = fixture["goals"]["home"]
-            away_score = fixture["goals"]["away"]
-            if home_score is not None and away_score is not None:
-                updated = _apply_result(db, match, home_score, away_score)
+        if status == "FINISHED" and home_score is not None and away_score is not None:
+            updated = _apply_result(db, match, home_score, away_score)
         db.commit()
     finally:
         db.close()
@@ -310,7 +279,7 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
         "status": status,
         "home": home_api,
         "away": away_api,
-        "score": f"{fixture['goals']['home']}-{fixture['goals']['away']}",
+        "score": f"{home_score}-{away_score}",
         "updated": updated,
     }
 
@@ -336,6 +305,27 @@ async def sync_test_matches() -> int:
     return updated
 
 
+def _next_match_window() -> tuple[bool, float]:
+    """Returns (is_active_window, seconds_to_sleep)."""
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        upcoming = (
+            db.query(models.Match)
+            .filter(models.Match.status != "finished")
+            .filter(models.Match.home_team_id.isnot(None))
+            .filter(models.Match.is_test == False)
+            .all()
+        )
+        for m in upcoming:
+            delta = (m.scheduled_at - now).total_seconds()
+            if -1800 <= delta <= 7200:
+                return True, 600
+        return False, 1800
+    finally:
+        db.close()
+
+
 def _has_active_test_match() -> bool:
     """Check if any test match is within its active window."""
     db = SessionLocal()
@@ -356,8 +346,8 @@ def _has_active_test_match() -> bool:
 
 
 async def polling_loop():
-    """Background task: polls API-Football at the right cadence."""
-    await asyncio.sleep(30)  # wait for startup to complete
+    """Background task: polls football-data.org at the right cadence."""
+    await asyncio.sleep(30)
     while True:
         try:
             is_active, sleep_secs = _next_match_window()
