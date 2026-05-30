@@ -722,39 +722,12 @@ export default function AdminPage() {
             <div className="flex flex-col gap-4">
               {testMatchCards.map(m => {
                 const meta = testMatches.find(t => t.id === m.id)
-                const isFinished = m.status === 'finished'
-                const isLive = !isFinished && new Date() >= new Date(m.scheduled_at + 'Z')
-                const hasScore = m.home_score != null && m.away_score != null
                 return (
                   <div key={m.id}>
                     <MatchCard match={m} onPredictionSaved={async () => {
                       const tcRes = await api.get('/api/admin/test-matches/cards')
                       setTestMatchCards(tcRes.data)
                     }} />
-
-                    {/* Status badge */}
-                    <div className="flex justify-center mt-2">
-                      {isFinished ? (
-                        <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-1.5 text-sm text-green-400">
-                          ✅ הסתיים <strong className="text-white text-base tracking-wide">{m.home_score} – {m.away_score}</strong>
-                        </div>
-                      ) : isLive ? (
-                        <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-1.5 text-sm text-red-300">
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          לייב
-                          {hasScore && (
-                            <>
-                              <span className="w-px h-3.5 bg-red-500/30" />
-                              <strong className="text-white text-base tracking-wide">{m.home_score} – {m.away_score}</strong>
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/40">
-                          ⏳ טרם החל
-                        </div>
-                      )}
-                    </div>
 
                     {/* Management buttons */}
                     <div className="flex gap-2 mt-2 px-1 justify-center">
