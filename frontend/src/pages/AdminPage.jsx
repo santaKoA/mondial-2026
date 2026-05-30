@@ -198,7 +198,7 @@ export default function AdminPage() {
     try {
       const date = testForm.scheduled_at.slice(0, 10) // YYYY-MM-DD
       const { data } = await api.get('/api/admin/search-fixtures', {
-        params: { league_id: testForm.api_league_id, season: testForm.api_season, date }
+        params: { league_id: testForm.api_league_id, season: testForm.api_season, date, team: testForm.home_name }
       })
       setFixtureResults(data)
       if (data.length === 0) toast.error('לא נמצאו משחקים בתאריך זה')

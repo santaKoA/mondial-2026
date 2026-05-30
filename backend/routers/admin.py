@@ -262,32 +262,43 @@ async def _find_fixture_id(league_id: int, season: int, scheduled_at: datetime) 
 async def search_fixtures(
     league_id: int,
     season: int,
-    date: str,  # YYYY-MM-DD
+    date: str,           # YYYY-MM-DD — used to filter after fetching all
+    team: str = "",      # optional team name filter
     _: models.User = Depends(auth_utils.get_admin_user),
 ):
-    """Search api-football fixtures by league+season+date. Returns list for admin to pick fixture_id."""
+    """Fetch all fixtures for league+season, filter by date and optional team name."""
     from config import settings
     if not settings.FOOTBALL_API_KEY:
         raise HTTPException(status_code=400, detail="FOOTBALL_API_KEY לא מוגדר")
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
                 f"{results_sync.API_URL}/fixtures",
-                params={"league": league_id, "season": season, "date": date},
+                params={"league": league_id, "season": season},
                 headers={"x-apisports-key": settings.FOOTBALL_API_KEY},
             )
         resp.raise_for_status()
         fixtures = resp.json().get("response", [])
-        return [
-            {
+
+        results = []
+        for f in fixtures:
+            fixture_date = f["fixture"]["date"][:10]  # YYYY-MM-DD
+            home = f["teams"]["home"]["name"]
+            away = f["teams"]["away"]["name"]
+            # Filter by date
+            if fixture_date != date:
+                continue
+            # Filter by team name if provided
+            if team and team.lower() not in home.lower() and team.lower() not in away.lower():
+                continue
+            results.append({
                 "fixture_id": f["fixture"]["id"],
-                "home": f["teams"]["home"]["name"],
-                "away": f["teams"]["away"]["name"],
+                "home": home,
+                "away": away,
                 "date": f["fixture"]["date"],
                 "status": f["fixture"]["status"]["long"],
-            }
-            for f in fixtures
-        ]
+            })
+        return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
