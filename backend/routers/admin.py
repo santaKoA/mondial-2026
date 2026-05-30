@@ -10,6 +10,7 @@ import schemas
 import auth as auth_utils
 import scoring
 from services import results_sync
+from config import settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
