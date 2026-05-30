@@ -244,6 +244,8 @@ export default function AdminPage() {
     try {
       const payload = {
         ...testForm,
+        // datetime-local gives local time → convert to UTC ISO so backend stores correctly
+        scheduled_at: new Date(testForm.scheduled_at).toISOString(),
         api_league_id: Number(testForm.api_league_id),
         api_season: Number(testForm.api_season),
         api_fixture_id: testForm.api_fixture_id ? Number(testForm.api_fixture_id) : null,
