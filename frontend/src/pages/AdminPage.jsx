@@ -734,7 +734,8 @@ export default function AdminPage() {
           <div className="card border-orange-500/30 bg-orange-500/5">
             <h2 className="font-bold text-orange-300 mb-4">🧪 צור משחק טסט</h2>
             <form onSubmit={handleCreateTestMatch} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
+              {/* Teams — stack on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">קבוצת בית</label>
                   <div className="flex gap-2">
@@ -742,7 +743,7 @@ export default function AdminPage() {
                       className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
                     <input value={testForm.home_name} onChange={e => setTestForm(f => ({ ...f, home_name: e.target.value }))}
                       placeholder="שם קבוצת בית"
-                      className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
+                      className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
                   </div>
                 </div>
                 <div>
@@ -752,11 +753,13 @@ export default function AdminPage() {
                       className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
                     <input value={testForm.away_name} onChange={e => setTestForm(f => ({ ...f, away_name: e.target.value }))}
                       placeholder="שם קבוצת חוץ"
-                      className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
+                      className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Time + Stage */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">שעת קיקאוף (שעון ישראל)</label>
                   <input type="datetime-local" value={testForm.scheduled_at}
@@ -774,17 +777,19 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+
+              {/* API fields — stack on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">תחרות (CL / WC)</label>
+                  <label className="text-xs text-white/50 mb-1 block">תחרות</label>
                   <select value={testForm.api_league_id}
                     onChange={e => {
                       const comp = e.target.value
                       setTestForm(f => ({ ...f, api_league_id: comp, api_season: comp === 'WC' ? 2026 : 2025 }))
                     }}
                     className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
-                    <option value="CL">🏆 CL — ליגת אלופות</option>
-                    <option value="WC">🌍 WC — מונדיאל</option>
+                    <option value="CL">🏆 ליגת אלופות (CL)</option>
+                    <option value="WC">🌍 מונדיאל (WC)</option>
                   </select>
                 </div>
                 <div>
@@ -801,7 +806,9 @@ export default function AdminPage() {
                     className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400 placeholder-white/20" />
                 </div>
               </div>
-              <div className="flex gap-2">
+
+              {/* Buttons — stack on mobile */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button type="button" onClick={handleSearchFixtures} disabled={searchingFixtures}
                   className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
                   {searchingFixtures ? '⏳ מחפש...' : '🔍 חפש fixture לפי תאריך'}
@@ -812,9 +819,10 @@ export default function AdminPage() {
                 </button>
               </div>
 
+              {/* Fixture search results */}
               {fixtureResults && fixtureResults.length > 0 && (
                 <div className="bg-black/30 rounded-lg p-3 flex flex-col gap-2">
-                  <p className="text-xs text-white/40 mb-1">בחר משחק להעתקת fixture_id:</p>
+                  <p className="text-xs text-white/40 mb-1">בחר משחק:</p>
                   {fixtureResults.map(f => (
                     <button
                       key={f.fixture_id}
@@ -823,11 +831,13 @@ export default function AdminPage() {
                         setTestForm(prev => ({ ...prev, api_fixture_id: String(f.fixture_id) }))
                         toast.success(`fixture_id ${f.fixture_id} הוגדר`)
                       }}
-                      className="flex items-center justify-between text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-right transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-right transition-colors"
                     >
-                      <code className="text-orange-300 font-mono">{f.fixture_id}</code>
-                      <span className="text-white/70">{f.home} vs {f.away}</span>
-                      <span className="text-white/30">{f.date?.slice(11,16)}</span>
+                      <span className="text-white/80 font-medium">{f.home} vs {f.away}</span>
+                      <div className="flex gap-2 text-white/40">
+                        <span>{f.date?.slice(11,16)}</span>
+                        <code className="text-orange-300">{f.fixture_id}</code>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -852,8 +862,8 @@ export default function AdminPage() {
                     <ManualScoreRow match={m} onSave={handleManualScore} />
 
                     {/* Management buttons */}
-                    <div className="flex gap-2 mt-2 px-1 justify-center">
-                      {meta && <span className="text-xs text-white/25">fixture_id: <code className="text-orange-300">{meta.api_fixture_id || '—'}</code></span>}
+                    <div className="flex flex-wrap gap-2 mt-2 px-1 justify-center items-center">
+                      {meta && <span className="text-xs text-white/25 w-full text-center">fixture_id: <code className="text-orange-300">{meta.api_fixture_id || '—'}</code></span>}
                       <button
                         onClick={() => handleSyncTestMatch(m.id)}
                         disabled={syncingTest === m.id || !meta?.api_fixture_id}
