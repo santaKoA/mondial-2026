@@ -12,9 +12,14 @@
     box-sizing: border-box;
   }
 
-  input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
-    opacity: 1;
+  .score-input::-webkit-inner-spin-button,
+  .score-input::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  .score-input {
+    appearance: textfield;
   }
 }
 
