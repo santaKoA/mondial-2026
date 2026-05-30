@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
 import { TeamPicker, PlayerPicker } from '../components/SpecialPickers'
+import MatchCard from '../components/MatchCard'
 
 function formatDate(str) {
   if (!str) return '—'
@@ -152,7 +153,8 @@ export default function AdminPage() {
   const [deletingUser, setDeletingUser] = useState(null)
   const [resetPw, setResetPw] = useState(null) // { id, value }
   // Test match state
-  const [testMatches, setTestMatches] = useState([])
+  const [testMatches, setTestMatches] = useState([])       // metadata (for sync/delete)
+  const [testMatchCards, setTestMatchCards] = useState([]) // MatchOut format (for prediction cards)
   const [testForm, setTestForm] = useState({
     home_name: 'ארסנל', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
     away_name: 'פריז סן ז\'רמן', away_flag: '🇫🇷',
@@ -164,13 +166,14 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const [mRes, tRes, uRes, gRes, sRes, tmRes] = await Promise.all([
+      const [mRes, tRes, uRes, gRes, sRes, tmRes, tcRes] = await Promise.all([
         api.get('/api/matches'),
         api.get('/api/admin/teams'),
         api.get('/api/admin/users'),
         api.get('/api/admin/groups'),
         api.get('/api/admin/sync/status'),
         api.get('/api/admin/test-matches'),
+        api.get('/api/admin/test-matches/cards'),
       ])
       setMatches(mRes.data)
       setTeams(tRes.data)
@@ -178,6 +181,7 @@ export default function AdminPage() {
       setGroups(gRes.data)
       setSyncStatus(sRes.data)
       setTestMatches(tmRes.data)
+      setTestMatchCards(tcRes.data)
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה בטעינת נתוני הניהול')
     } finally {
@@ -197,6 +201,8 @@ export default function AdminPage() {
       }
       const { data } = await api.post('/api/admin/test-match', payload)
       setTestMatches(prev => [...prev, data])
+      const tcRes = await api.get('/api/admin/test-matches/cards')
+      setTestMatchCards(tcRes.data)
       toast.success(`✅ משחק טסט נוצר! fixture_id: ${data.api_fixture_id || 'לא נמצא'}`)
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
@@ -210,6 +216,7 @@ export default function AdminPage() {
     try {
       await api.delete(`/api/admin/test-matches/${id}`)
       setTestMatches(prev => prev.filter(m => m.id !== id))
+      setTestMatchCards(prev => prev.filter(m => m.id !== id))
       toast.success('נמחק')
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
@@ -709,46 +716,37 @@ export default function AdminPage() {
             </form>
           </div>
 
-          {testMatches.length === 0 ? (
-            <div className="text-center py-8 text-white/30">אין משחקי טסט</div>
+          {testMatchCards.length === 0 ? (
+            <div className="text-center py-8 text-white/30">אין משחקי טסט — צור אחד למעלה</div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {testMatches.map(m => (
-                <div key={m.id} className="card border-orange-500/20">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3 text-lg font-bold">
-                      <span>{m.test_home_flag} {m.test_home_name}</span>
-                      <span className="text-white/40 font-normal text-sm">vs</span>
-                      <span>{m.test_away_name} {m.test_away_flag}</span>
+            <div className="flex flex-col gap-4">
+              {testMatchCards.map(m => {
+                const meta = testMatches.find(t => t.id === m.id)
+                return (
+                  <div key={m.id}>
+                    <MatchCard match={m} onPredictionSaved={async () => {
+                      const tcRes = await api.get('/api/admin/test-matches/cards')
+                      setTestMatchCards(tcRes.data)
+                    }} />
+                    <div className="flex gap-2 mt-2 px-1">
+                      {meta && <span className="text-xs text-white/30 ml-auto">fixture_id: <code className="text-orange-300">{meta.api_fixture_id || '—'}</code></span>}
+                      <button
+                        onClick={() => handleSyncTestMatch(m.id)}
+                        disabled={syncingTest === m.id || !meta?.api_fixture_id}
+                        className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-40"
+                      >
+                        {syncingTest === m.id ? '⏳' : '🔄'} סנכרן
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTestMatch(m.id)}
+                        className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded-lg transition-colors"
+                      >
+                        🗑️ מחק
+                      </button>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      m.status === 'finished' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-300'
-                    }`}>
-                      {m.status === 'finished' ? `✅ ${m.home_score}-${m.away_score}` : '⏳ ממתין'}
-                    </span>
                   </div>
-                  <div className="text-xs text-white/40 flex flex-wrap gap-x-4 gap-y-1 mb-3">
-                    <span>📅 {new Date(m.scheduled_at + 'Z').toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
-                    <span>🔑 fixture_id: <code className="text-orange-300">{m.api_fixture_id || '—'}</code></span>
-                    <span>🏆 league: {m.api_league_id} · season: {m.api_season}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleSyncTestMatch(m.id)}
-                      disabled={syncingTest === m.id || !m.api_fixture_id}
-                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
-                    >
-                      {syncingTest === m.id ? '⏳' : '🔄'} סנכרן מ-API
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTestMatch(m.id)}
-                      className="bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      🗑️ מחק
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

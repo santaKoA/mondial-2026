@@ -306,6 +306,47 @@ def list_test_matches(
         .order_by(models.Match.scheduled_at).all()
 
 
+@router.get("/test-matches/cards", response_model=list[schemas.MatchOut])
+def list_test_match_cards(
+    current_admin: models.User = Depends(auth_utils.get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Return test matches in MatchOut format (with fake TeamOut) so MatchCard can render them."""
+    matches = db.query(models.Match).filter(models.Match.is_test == True)\
+        .order_by(models.Match.scheduled_at).all()
+
+    match_ids = [m.id for m in matches]
+    pred_map = {}
+    if match_ids:
+        preds = db.query(models.Prediction).filter(
+            models.Prediction.user_id == current_admin.id,
+            models.Prediction.match_id.in_(match_ids),
+        ).all()
+        pred_map = {p.match_id: p for p in preds}
+
+    result = []
+    for m in matches:
+        p = pred_map.get(m.id)
+        result.append(schemas.MatchOut(
+            id=m.id,
+            match_number=m.match_number,
+            stage=m.stage,
+            group_name=m.group_name,
+            scheduled_at=m.scheduled_at,
+            home_team=schemas.TeamOut(id=0, name=m.test_home_name or '?', flag=m.test_home_flag or '🏳', group_name=None) if m.test_home_name else None,
+            away_team=schemas.TeamOut(id=0, name=m.test_away_name or '?', flag=m.test_away_flag or '🏳', group_name=None) if m.test_away_name else None,
+            home_score=m.home_score,
+            away_score=m.away_score,
+            status=m.status,
+            my_prediction=schemas.PredictionOut(
+                id=p.id, match_id=p.match_id,
+                home_score=p.home_score, away_score=p.away_score,
+                points=p.points, submitted_at=p.submitted_at, updated_at=p.updated_at,
+            ) if p else None,
+        ))
+    return result
+
+
 @router.delete("/test-matches/{match_id}")
 def delete_test_match(
     match_id: int,
