@@ -188,7 +188,7 @@ export default function AdminPage() {
     home_name: 'ארסנל', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
     away_name: 'פריז סן ז\'רמן', away_flag: '🇫🇷',
     scheduled_at: '', stage: 'final',
-    api_league_id: 2, api_season: 2025, api_fixture_id: '',
+    api_league_id: 'CL', api_season: 2025, api_fixture_id: '',
   })
   const [creatingTest, setCreatingTest] = useState(false)
   const [syncingTest, setSyncingTest] = useState(null)
@@ -227,7 +227,7 @@ export default function AdminPage() {
     try {
       const date = testForm.scheduled_at.slice(0, 10) // YYYY-MM-DD
       const { data } = await api.get('/api/admin/search-fixtures', {
-        params: { league_id: testForm.api_league_id, season: testForm.api_season, date, team: testForm.home_name }
+        params: { competition: testForm.api_league_id, season: testForm.api_season, date, team: testForm.home_name }
       })
       setFixtureResults(data)
       if (data.length === 0) toast.error('לא נמצאו משחקים בתאריך זה')
@@ -752,10 +752,13 @@ export default function AdminPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">League ID (API)</label>
-                  <input type="number" value={testForm.api_league_id}
+                  <label className="text-xs text-white/50 mb-1 block">תחרות (CL / WC)</label>
+                  <select value={testForm.api_league_id}
                     onChange={e => setTestForm(f => ({ ...f, api_league_id: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
+                    <option value="CL">🏆 CL — ליגת אלופות</option>
+                    <option value="WC">🌍 WC — מונדיאל</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs text-white/50 mb-1 block">Season</label>
