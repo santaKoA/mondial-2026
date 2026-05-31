@@ -344,61 +344,106 @@ async def sync_test_matches() -> int:
     return updated
 
 
-def _next_sync_point() -> float:
+def _mark_kicked_off_matches():
     """
-    Return seconds to sleep until the next sync point.
-    Sync points per match: kickoff+45min and kickoff+120min.
-    Multiple matches close together (within 15min) share one API call.
-    Returns seconds to sleep (>0 = sleep, <=0 = sync now).
+    Set status='live' and score=0-0 for any match whose kickoff has passed
+    but is still 'upcoming'. No API call — pure time-based.
     """
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc).replace(tzinfo=None)
-        unfinished = db.query(models.Match).filter(
+        just_kicked = db.query(models.Match).filter(
+            models.Match.status == "upcoming",
+            models.Match.home_team_id.isnot(None),
+            models.Match.scheduled_at <= now,
+        ).all()
+        if just_kicked:
+            for m in just_kicked:
+                m.status = "live"
+                m.home_score = 0
+                m.away_score = 0
+            db.commit()
+            logger.info(f"Marked {len(just_kicked)} match(es) as live 0-0")
+    finally:
+        db.close()
+
+
+def _next_event_secs() -> float:
+    """
+    Seconds until the next event requiring a wakeup:
+    - Kickoff of any upcoming match (to mark it live)
+    - +45min or +120min sync point for any active match
+    """
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        active = db.query(models.Match).filter(
             models.Match.status != "finished",
             models.Match.home_team_id.isnot(None),
         ).all()
 
         points = []
-        for m in unfinished:
-            kickoff = m.scheduled_at
+        for m in active:
+            # Kickoff wakeup
+            if m.status == "upcoming" and m.scheduled_at > now:
+                points.append(m.scheduled_at)
+            # API sync points
             for offset_min in (45, 120):
-                pt = kickoff + timedelta(minutes=offset_min)
-                # Only consider future points or points we just missed (within 10 min)
-                if pt >= now - timedelta(minutes=10):
+                pt = m.scheduled_at + timedelta(minutes=offset_min)
+                if pt > now:
                     points.append(pt)
 
         if not points:
-            return 3600  # no matches — check again in 1 hour
+            return 3600
+        return max((min(points) - now).total_seconds(), 0)
+    finally:
+        db.close()
 
-        next_pt = min(points)
-        return (next_pt - now).total_seconds()
+
+def _has_api_sync_due() -> bool:
+    """True if any match is within the 5-min window after its +45min or +120min point."""
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        active = db.query(models.Match).filter(
+            models.Match.status != "finished",
+            models.Match.home_team_id.isnot(None),
+        ).all()
+        for m in active:
+            for offset_min in (45, 120):
+                pt = m.scheduled_at + timedelta(minutes=offset_min)
+                diff = (now - pt).total_seconds()
+                if 0 <= diff <= 300:
+                    return True
+        return False
     finally:
         db.close()
 
 
 async def polling_loop():
     """
-    Background task: syncs at kickoff+45min and kickoff+120min for each match.
-    Each sync_results() call fetches ALL matches in one API request —
-    so multiple matches on the same day share the same call.
-    Max ~2 API calls per match-day, well within the 10/day free-tier limit.
+    Background task:
+    1. At kickoff → mark match live with 0-0 (no API call)
+    2. At kickoff+45min → API sync (halftime score)
+    3. At kickoff+120min → API sync (final result)
     """
-    await asyncio.sleep(30)  # wait for startup
+    await asyncio.sleep(30)
     while True:
         try:
-            secs = _next_sync_point()
+            # Mark matches that just kicked off as live 0-0
+            _mark_kicked_off_matches()
 
-            if secs > 60:
-                # Sleep until ~1 minute before next sync point
-                await asyncio.sleep(min(secs - 60, 3600))
+            # Fire API sync if we're at a +45 or +120 point
+            if _has_api_sync_due():
+                logger.info("API sync point reached")
+                await sync_results()
+                await sync_test_matches()
+                await asyncio.sleep(120)  # cooldown before next check
                 continue
 
-            # We're at a sync point — fire!
-            logger.info("Sync point reached — syncing results")
-            await sync_results()
-            await sync_test_matches()
-            await asyncio.sleep(120)  # 2-min cooldown before recalculating
+            # Sleep until next event (kickoff or sync point)
+            secs = _next_event_secs()
+            await asyncio.sleep(max(min(secs - 30, 3600), 60))
 
         except asyncio.CancelledError:
             break
