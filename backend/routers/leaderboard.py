@@ -14,13 +14,14 @@ router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 def _build_leaderboard(users: list[models.User], reveal_special: bool = True) -> list[schemas.UserOut]:
     result = []
     for user in users:
-        match_pts = sum(p.points or 0 for p in user.predictions)
+        real_preds = [p for p in user.predictions if not p.match.is_test]
+        match_pts = sum(p.points or 0 for p in real_preds)
         special_pts = sum(s.points or 0 for s in user.special_predictions)
         winner_pick = next((s.value for s in user.special_predictions if s.prediction_type == "winner"), None)
         top_scorer_pick = next((s.value for s in user.special_predictions if s.prediction_type == "top_scorer"), None)
         exact_count = 0
         direction_count = 0
-        for p in user.predictions:
+        for p in real_preds:
             m = p.match
             if m.status != "finished" or m.home_score is None or m.away_score is None:
                 continue
@@ -35,7 +36,7 @@ def _build_leaderboard(users: list[models.User], reveal_special: bool = True) ->
                 name=user.name,
                 is_admin=user.is_admin,
                 total_points=match_pts + special_pts,
-                prediction_count=len(user.predictions),
+                prediction_count=len(real_preds),
                 exact_count=exact_count,
                 direction_count=direction_count,
                 winner_pick=winner_pick if reveal_special else None,

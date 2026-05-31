@@ -196,8 +196,7 @@ async def link_fixtures(
     db: Session = Depends(get_db),
 ):
     """Fetch all WC fixtures from football-data.org and store their IDs in our DB matches."""
-    from config import settings as cfg
-    if not cfg.FOOTBALL_DATA_TOKEN:
+    if not settings.FOOTBALL_DATA_TOKEN:
         raise HTTPException(status_code=400, detail="FOOTBALL_DATA_TOKEN לא מוגדר")
 
     try:
@@ -205,7 +204,7 @@ async def link_fixtures(
             resp = await client.get(
                 f"{results_sync.API_URL}/competitions/WC/matches",
                 params={"season": 2026},
-                headers={"X-Auth-Token": cfg.FOOTBALL_DATA_TOKEN},
+                headers={"X-Auth-Token": settings.FOOTBALL_DATA_TOKEN},
             )
         resp.raise_for_status()
         api_matches = resp.json().get("matches", [])
@@ -312,7 +311,6 @@ def delete_group(
 
 async def _find_fixture_id(api_league_id: int, api_season: int, scheduled_at: datetime) -> int | None:
     """Search football-data.org for a fixture by competition+season+date, closest to scheduled_at."""
-    from config import settings
     if not settings.FOOTBALL_DATA_TOKEN:
         return None
     # Map legacy league_id to competition code
