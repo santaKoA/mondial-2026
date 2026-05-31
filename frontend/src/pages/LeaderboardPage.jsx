@@ -12,10 +12,11 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
   useEffect(() => {
     api.get(`/api/leaderboard?group_id=${group.id}`)
       .then(r => setUsers(r.data))
-      .catch(() => setUsers([]))
+      .catch(() => { setUsers([]); toast.error('שגיאה בטעינת לוח הדירוג') })
   }, [group.id])
 
-  async function handleRemove(userId) {
+  async function handleRemove(userId, userName) {
+    if (!window.confirm(`להסיר את ${userName} מהקבוצה?`)) return
     setRemoving(userId)
     try {
       await api.delete(`/api/leaderboard/groups/${group.id}/members/${userId}`)
@@ -113,7 +114,7 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
                     <td className="py-3 px-2 text-center">
                       {user.id !== me?.id && (
                         <button
-                          onClick={() => handleRemove(user.id)}
+                          onClick={() => handleRemove(user.id, user.name)}
                           disabled={removing === user.id}
                           className="text-red-400/60 hover:text-red-400 text-xs px-1.5 py-0.5 rounded transition-colors disabled:opacity-30"
                           title="הסר מהקבוצה"
