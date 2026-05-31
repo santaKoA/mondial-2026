@@ -342,21 +342,17 @@ async def _find_fixture_id(api_league_id: int, api_season: int, scheduled_at: da
 
 @router.get("/search-fixtures")
 async def search_fixtures(
-    competition: str = "CL",   # e.g. CL, WC
-    season: int = 2025,
-    date: str = "",            # YYYY-MM-DD
-    team: str = "",            # optional name filter
+    date: str = "",    # YYYY-MM-DD (Israel date, we try both that day and next in UTC)
+    season: int = 2026,
     _: models.User = Depends(auth_utils.get_admin_user),
 ):
-    """Search football-data.org fixtures by competition+season, filter by date/team."""
-    from config import settings
+    """Search WC fixtures by date. Returns all matches for that Israel date."""
     if not settings.FOOTBALL_DATA_TOKEN:
         raise HTTPException(status_code=400, detail="FOOTBALL_DATA_TOKEN לא מוגדר")
     try:
-        # Fetch ALL matches for the season, filter by date locally (more reliable)
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
-                f"{results_sync.API_URL}/competitions/{competition}/matches",
+                f"{results_sync.API_URL}/competitions/WC/matches",
                 params={"season": season},
                 headers={"X-Auth-Token": settings.FOOTBALL_DATA_TOKEN},
             )
@@ -365,18 +361,30 @@ async def search_fixtures(
 
         results = []
         for m in matches:
-            home = m["homeTeam"]["name"]
-            away = m["awayTeam"]["name"]
-            match_date = m["utcDate"][:10]  # YYYY-MM-DD
-            if date and match_date != date:
-                continue
-            if team and team.lower() not in home.lower() and team.lower() not in away.lower():
-                continue
+            utc_date = m["utcDate"][:10]
+            # Israel is UTC+3: a match at 22:00 Israel = 19:00 UTC (same day)
+            # or 00:00 Israel next day = 21:00 UTC previous day
+            # So we accept: utc_date == date OR utc_date == date-1
+            from datetime import date as date_type
+            d = date_type.fromisoformat(date) if date else None
+            if d:
+                utc_d = date_type.fromisoformat(utc_date)
+                if utc_d != d and utc_d != (d - timedelta(days=1)):
+                    continue
+
+            # Convert UTC time to Israel time for display
+            from datetime import datetime as dt_type
+            utc_dt = dt_type.fromisoformat(m["utcDate"].replace("Z", "+00:00"))
+            israel_dt = utc_dt.astimezone(timezone(timedelta(hours=3)))
+            israel_time = israel_dt.strftime("%H:%M")
+
             results.append({
                 "fixture_id": m["id"],
-                "home": home,
-                "away": away,
-                "date": m["utcDate"],
+                "home": m["homeTeam"]["name"],
+                "away": m["awayTeam"]["name"],
+                "utc_date": m["utcDate"],
+                "israel_time": israel_time,
+                "stage": m.get("stage", ""),
                 "status": m["status"],
             })
         return results
@@ -390,18 +398,37 @@ async def create_test_match(
     _: models.User = Depends(auth_utils.get_admin_user),
     db: Session = Depends(get_db),
 ):
-    # Generate a unique match_number well above normal range
+    """Create test match from a fixture_id — auto-fetches team names from API."""
+    if not settings.FOOTBALL_DATA_TOKEN:
+        raise HTTPException(status_code=400, detail="FOOTBALL_DATA_TOKEN לא מוגדר")
+
+    # Fetch fixture details from API
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{results_sync.API_URL}/matches/{body.fixture_id}",
+                headers={"X-Auth-Token": settings.FOOTBALL_DATA_TOKEN},
+            )
+        resp.raise_for_status()
+        m = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"שגיאה בטעינת fixture: {e}")
+
+    home_api = m["homeTeam"]["name"]
+    away_api = m["awayTeam"]["name"]
+
+    # Convert to Hebrew + get flag from DB
+    home_heb = results_sync.TEAM_NAME_MAP.get(home_api, home_api)
+    away_heb = results_sync.TEAM_NAME_MAP.get(away_api, away_api)
+    home_team = db.query(models.Team).filter_by(name=home_heb).first()
+    away_team = db.query(models.Team).filter_by(name=away_heb).first()
+
+    # Parse scheduled_at (naive UTC)
+    sat = datetime.fromisoformat(m["utcDate"].replace("Z", "+00:00"))\
+        .astimezone(timezone.utc).replace(tzinfo=None)
+
     max_num = db.query(models.Match).order_by(models.Match.match_number.desc()).first()
     next_num = max((max_num.match_number if max_num else 0) + 1, 10000)
-
-    # scheduled_at as naive UTC
-    sat = body.scheduled_at
-    if sat.tzinfo:
-        sat = sat.astimezone(timezone.utc).replace(tzinfo=None)
-
-    fixture_id = body.api_fixture_id
-    if not fixture_id:
-        fixture_id = await _find_fixture_id(body.api_league_id, body.api_season, sat)
 
     match = models.Match(
         match_number=next_num,
@@ -409,13 +436,13 @@ async def create_test_match(
         scheduled_at=sat,
         status="upcoming",
         is_test=True,
-        api_league_id=body.api_league_id,
+        api_league_id=1,
         api_season=body.api_season,
-        api_fixture_id=fixture_id,
-        test_home_name=body.home_name,
-        test_home_flag=body.home_flag,
-        test_away_name=body.away_name,
-        test_away_flag=body.away_flag,
+        api_fixture_id=body.fixture_id,
+        test_home_name=home_heb,
+        test_home_flag=home_team.flag if home_team else "🏳",
+        test_away_name=away_heb,
+        test_away_flag=away_team.flag if away_team else "🏳",
     )
     db.add(match)
     db.commit()

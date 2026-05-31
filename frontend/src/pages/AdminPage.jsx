@@ -182,15 +182,12 @@ export default function AdminPage() {
   const [deletingUser, setDeletingUser] = useState(null)
   const [resetPw, setResetPw] = useState(null) // { id, value }
   // Test match state
-  const [testMatches, setTestMatches] = useState([])       // metadata (for sync/delete)
-  const [testMatchCards, setTestMatchCards] = useState([]) // MatchOut format (for prediction cards)
-  const [testForm, setTestForm] = useState({
-    home_name: 'ארסנל', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-    away_name: 'פריז סן ז\'רמן', away_flag: '🇫🇷',
-    scheduled_at: '', stage: 'final',
-    api_league_id: 'CL', api_season: 2025, api_fixture_id: '',
-  })
-  const [creatingTest, setCreatingTest] = useState(false)
+  const [testMatches, setTestMatches] = useState([])
+  const [testMatchCards, setTestMatchCards] = useState([])
+  const [testSearchDate, setTestSearchDate] = useState('')
+  const [testSearchStage, setTestSearchStage] = useState('')
+  const [testSeason, setTestSeason] = useState(2026)
+  const [creatingTest, setCreatingTest] = useState(null) // fixture_id being created
   const [syncingTest, setSyncingTest] = useState(null)
   const [searchingFixtures, setSearchingFixtures] = useState(false)
   const [fixtureResults, setFixtureResults] = useState(null)
@@ -221,13 +218,12 @@ export default function AdminPage() {
   }
 
   async function handleSearchFixtures() {
-    if (!testForm.scheduled_at) { toast.error('בחר תאריך קודם'); return }
+    if (!testSearchDate) { toast.error('בחר תאריך קודם'); return }
     setSearchingFixtures(true)
     setFixtureResults(null)
     try {
-      const date = testForm.scheduled_at.slice(0, 10) // YYYY-MM-DD
       const { data } = await api.get('/api/admin/search-fixtures', {
-        params: { competition: testForm.api_league_id, season: testForm.api_season, date, team: testForm.home_name }
+        params: { date: testSearchDate, season: testSeason }
       })
       setFixtureResults(data)
       if (data.length === 0) toast.error('לא נמצאו משחקים בתאריך זה')
@@ -238,27 +234,23 @@ export default function AdminPage() {
     }
   }
 
-  async function handleCreateTestMatch(e) {
-    e.preventDefault()
-    setCreatingTest(true)
+  async function handleCreateTestMatch(fixtureId, stage) {
+    setCreatingTest(fixtureId)
     try {
-      const payload = {
-        ...testForm,
-        // datetime-local gives local time → convert to UTC ISO so backend stores correctly
-        scheduled_at: new Date(testForm.scheduled_at).toISOString(),
-        api_league_id: testForm.api_league_id === 'CL' ? 2 : testForm.api_league_id === 'WC' ? 1 : Number(testForm.api_league_id),
-        api_season: Number(testForm.api_season),
-        api_fixture_id: testForm.api_fixture_id ? Number(testForm.api_fixture_id) : null,
-      }
-      const { data } = await api.post('/api/admin/test-match', payload)
+      const { data } = await api.post('/api/admin/test-match', {
+        fixture_id: fixtureId,
+        stage,
+        api_season: testSeason,
+      })
       setTestMatches(prev => [...prev, data])
       const tcRes = await api.get('/api/admin/test-matches/cards')
       setTestMatchCards(tcRes.data)
-      toast.success(`✅ משחק טסט נוצר! fixture_id: ${data.api_fixture_id || 'לא נמצא'}`)
+      setFixtureResults(null)
+      toast.success(`✅ ${data.test_home_name} vs ${data.test_away_name} נוצר!`)
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
-      setCreatingTest(false)
+      setCreatingTest(null)
     }
   }
 
@@ -732,117 +724,81 @@ export default function AdminPage() {
       {activeTab === 'test' && (
         <div className="flex flex-col gap-5">
           <div className="card border-orange-500/30 bg-orange-500/5">
-            <h2 className="font-bold text-orange-300 mb-4">🧪 צור משחק טסט</h2>
-            <form onSubmit={handleCreateTestMatch} className="flex flex-col gap-3">
-              {/* Teams — stack on mobile */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-white/50 mb-1 block">קבוצת בית</label>
-                  <div className="flex gap-2">
-                    <input value={testForm.home_flag} onChange={e => setTestForm(f => ({ ...f, home_flag: e.target.value }))}
-                      className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
-                    <input value={testForm.home_name} onChange={e => setTestForm(f => ({ ...f, home_name: e.target.value }))}
-                      placeholder="שם קבוצת בית"
-                      className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-white/50 mb-1 block">קבוצת חוץ</label>
-                  <div className="flex gap-2">
-                    <input value={testForm.away_flag} onChange={e => setTestForm(f => ({ ...f, away_flag: e.target.value }))}
-                      className="w-12 bg-white/10 border border-white/20 rounded px-2 py-2 text-center text-lg focus:outline-none focus:border-orange-400" />
-                    <input value={testForm.away_name} onChange={e => setTestForm(f => ({ ...f, away_name: e.target.value }))}
-                      placeholder="שם קבוצת חוץ"
-                      className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
-                  </div>
-                </div>
-              </div>
-
-              {/* Time + Stage */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-white/50 mb-1 block">שעת קיקאוף (שעון ישראל)</label>
-                  <input type="datetime-local" value={testForm.scheduled_at}
-                    onChange={e => setTestForm(f => ({ ...f, scheduled_at: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" required />
-                </div>
-                <div>
-                  <label className="text-xs text-white/50 mb-1 block">שלב</label>
-                  <select value={testForm.stage} onChange={e => setTestForm(f => ({ ...f, stage: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
-                    <option value="final">גמר</option>
-                    <option value="semi_final">חצי גמר</option>
-                    <option value="quarter_final">רבע גמר</option>
-                    <option value="group">שלב בתים</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* API fields — stack on mobile */}
+            <h2 className="font-bold text-orange-300 mb-4">🧪 הוסף משחק טסט</h2>
+            <div className="flex flex-col gap-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">תחרות</label>
-                  <select value={testForm.api_league_id}
-                    onChange={e => {
-                      const comp = e.target.value
-                      setTestForm(f => ({ ...f, api_league_id: comp, api_season: comp === 'WC' ? 2026 : 2025 }))
-                    }}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
-                    <option value="CL">🏆 ליגת אלופות (CL)</option>
-                    <option value="WC">🌍 מונדיאל (WC)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-white/50 mb-1 block">Season</label>
-                  <input type="number" value={testForm.api_season}
-                    onChange={e => setTestForm(f => ({ ...f, api_season: e.target.value }))}
+                  <label className="text-xs text-white/50 mb-1 block">תאריך</label>
+                  <input type="date" value={testSearchDate}
+                    onChange={e => { setTestSearchDate(e.target.value); setFixtureResults(null) }}
                     className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">Fixture ID (אופציונלי)</label>
-                  <input type="number" value={testForm.api_fixture_id}
-                    onChange={e => setTestForm(f => ({ ...f, api_fixture_id: e.target.value }))}
-                    placeholder="אוטומטי אם ריק"
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400 placeholder-white/20" />
+                  <label className="text-xs text-white/50 mb-1 block">עונה</label>
+                  <input type="number" value={testSeason} onChange={e => setTestSeason(Number(e.target.value))}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">סנן לפי שלב</label>
+                  <select value={testSearchStage} onChange={e => setTestSearchStage(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
+                    <option value="">כל השלבים</option>
+                    <option value="group">שלב הבתים</option>
+                    <option value="round_of_32">שלב ה-32</option>
+                    <option value="round_of_16">שמינית גמר</option>
+                    <option value="quarter_final">רבע גמר</option>
+                    <option value="semi_final">חצי גמר</option>
+                    <option value="final">גמר</option>
+                  </select>
                 </div>
               </div>
+              <button onClick={handleSearchFixtures} disabled={searchingFixtures || !testSearchDate}
+                className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                {searchingFixtures ? '⏳ מחפש...' : '🔍 חפש משחקים'}
+              </button>
 
-              {/* Buttons — stack on mobile */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button type="button" onClick={handleSearchFixtures} disabled={searchingFixtures}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
-                  {searchingFixtures ? '⏳ מחפש...' : '🔍 חפש fixture לפי תאריך'}
-                </button>
-                <button type="submit" disabled={creatingTest}
-                  className="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
-                  {creatingTest ? '⏳ יוצר...' : '🧪 צור משחק טסט'}
-                </button>
-              </div>
-
-              {/* Fixture search results */}
-              {fixtureResults && fixtureResults.length > 0 && (
+              {fixtureResults && (
                 <div className="bg-black/30 rounded-lg p-3 flex flex-col gap-2">
-                  <p className="text-xs text-white/40 mb-1">בחר משחק:</p>
-                  {fixtureResults.map(f => (
-                    <button
-                      key={f.fixture_id}
-                      type="button"
-                      onClick={() => {
-                        setTestForm(prev => ({ ...prev, api_fixture_id: String(f.fixture_id) }))
-                        toast.success(`fixture_id ${f.fixture_id} הוגדר`)
-                      }}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-right transition-colors"
-                    >
-                      <span className="text-white/80 font-medium">{f.home} vs {f.away}</span>
-                      <div className="flex gap-2 text-white/40">
-                        <span>{f.date?.slice(11,16)}</span>
-                        <code className="text-orange-300">{f.fixture_id}</code>
-                      </div>
-                    </button>
-                  ))}
+                  {fixtureResults.length === 0 ? (
+                    <p className="text-xs text-white/40 text-center">לא נמצאו משחקים</p>
+                  ) : (() => {
+                    const STAGE_MAP = {
+                      'GROUP_STAGE': 'group', 'ROUND_OF_32': 'round_of_32',
+                      'ROUND_OF_16': 'round_of_16', 'QUARTER_FINALS': 'quarter_final',
+                      'SEMI_FINALS': 'semi_final', 'FINAL': 'final', 'THIRD_PLACE': 'third_place',
+                    }
+                    const filtered = testSearchStage
+                      ? fixtureResults.filter(f => STAGE_MAP[f.stage] === testSearchStage)
+                      : fixtureResults
+                    return filtered.length === 0 ? (
+                      <p className="text-xs text-white/40 text-center">אין משחקים בשלב זה</p>
+                    ) : filtered.map(f => {
+                      const stage = STAGE_MAP[f.stage] || 'group'
+                      const alreadyExists = testMatches.some(t => t.api_fixture_id === f.fixture_id)
+                      return (
+                        <div key={f.fixture_id} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                          <div className="flex flex-col gap-0.5 text-right flex-1 min-w-0">
+                            <span className="text-sm text-white font-medium truncate">{f.home} vs {f.away}</span>
+                            <span className="text-xs text-white/40">{f.israel_time} 🇮🇱 · {STAGE_LABELS[stage] || stage}</span>
+                          </div>
+                          {alreadyExists ? (
+                            <span className="text-xs text-green-400 whitespace-nowrap">✅ קיים</span>
+                          ) : (
+                            <button
+                              onClick={() => handleCreateTestMatch(f.fixture_id, stage)}
+                              disabled={creatingTest === f.fixture_id}
+                              className="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
+                            >
+                              {creatingTest === f.fixture_id ? '⏳' : '+ הוסף'}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               )}
-            </form>
+            </div>
           </div>
 
           {testMatchCards.length === 0 ? (
