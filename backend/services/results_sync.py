@@ -413,7 +413,7 @@ def _has_api_sync_due() -> bool:
             for offset_min in (45, 120):
                 pt = m.scheduled_at + timedelta(minutes=offset_min)
                 diff = (now - pt).total_seconds()
-                if 0 <= diff <= 300:
+                if 0 <= diff <= 1800:  # 30-minute window — survives server restarts
                     return True
         return False
     finally:
@@ -438,7 +438,7 @@ async def polling_loop():
                 logger.info("API sync point reached")
                 await sync_results()
                 await sync_test_matches()
-                await asyncio.sleep(120)  # cooldown before next check
+                await asyncio.sleep(1860)  # 31-min cooldown — past the 30-min detection window
                 continue
 
             # Sleep until next event (kickoff or sync point)

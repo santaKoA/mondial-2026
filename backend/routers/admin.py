@@ -361,22 +361,14 @@ async def search_fixtures(
 
         results = []
         for m in matches:
-            utc_date = m["utcDate"][:10]
-            # Israel is UTC+3: a match at 22:00 Israel = 19:00 UTC (same day)
-            # or 00:00 Israel next day = 21:00 UTC previous day
-            # So we accept: utc_date == date OR utc_date == date-1
-            from datetime import date as date_type
-            d = date_type.fromisoformat(date) if date else None
-            if d:
-                utc_d = date_type.fromisoformat(utc_date)
-                if utc_d != d and utc_d != (d - timedelta(days=1)):
-                    continue
-
-            # Convert UTC time to Israel time for display
-            from datetime import datetime as dt_type
-            utc_dt = dt_type.fromisoformat(m["utcDate"].replace("Z", "+00:00"))
+            # Convert UTC to Israel time (UTC+3) — filter by Israel date
+            utc_dt = datetime.fromisoformat(m["utcDate"].replace("Z", "+00:00"))
             israel_dt = utc_dt.astimezone(timezone(timedelta(hours=3)))
+            israel_date = israel_dt.strftime("%Y-%m-%d")
             israel_time = israel_dt.strftime("%H:%M")
+
+            if date and israel_date != date:
+                continue
 
             results.append({
                 "fixture_id": m["id"],
