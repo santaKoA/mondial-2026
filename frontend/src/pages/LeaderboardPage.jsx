@@ -8,6 +8,7 @@ const MEDALS = ['🥇', '🥈', '🥉']
 function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
   const [users, setUsers] = useState(null)
   const [removing, setRemoving] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     api.get(`/api/leaderboard?group_id=${group.id}`)
@@ -30,121 +31,175 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
     }
   }
 
+  function copyCode() {
+    navigator.clipboard?.writeText(group.code).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+
+  const maxPts = users ? Math.max(...users.map(u => u.total_points), 1) : 1
+
   return (
-    <div className="mb-6">
-      {/* Group header */}
-      <div className="flex items-center justify-between mb-2">
-        <div
-          className="flex items-center gap-2 cursor-pointer group"
-          onClick={() => { navigator.clipboard?.writeText(group.code); toast.success('קוד הועתק!') }}
-          title="לחץ להעתקת קוד הצטרפות"
-        >
-          <span className="text-white/40 text-xs">קוד:</span>
-          <code className="text-green-300 font-mono font-bold tracking-wider text-sm">{group.code}</code>
-          <span className="text-white/20 text-xs group-hover:text-white/50 transition-colors">📋</span>
-        </div>
-        <h2 className="text-lg font-bold text-white">{group.name}
-          <span className="text-white/30 text-sm font-normal mr-1.5">({group.member_count} משתתפים)</span>
+    <div style={{ marginBottom: '28px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700 }}>
+          {group.name}
+          <span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,.3)', marginRight: '6px' }}>
+            ({group.member_count} משתתפים)
+          </span>
         </h2>
+        <button onClick={copyCode} style={{
+          display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer',
+          background: 'none', border: 'none', fontFamily: 'Heebo, sans-serif',
+        }}>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.3)' }}>קוד:</span>
+          <code style={{
+            fontSize: '13px', fontWeight: 700, letterSpacing: '2px',
+            color: '#1ede62', background: 'rgba(30,222,98,.1)', padding: '2px 8px', borderRadius: '6px',
+          }}>{copied ? '✓ הועתק' : group.code}</code>
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden p-0 overflow-x-auto">
+      {/* Column legend */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', marginBottom: '5px' }}>
+        <div style={{ width: '28px', flexShrink: 0 }} />
+        <div style={{ flex: 1, margin: '0 10px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🎯</div>
+          <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>↗</div>
+          <div style={{ width: '22px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🏆</div>
+          <div style={{ width: '90px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>⚽</div>
+          <div style={{ width: '40px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>נק׳</div>
+          {isOwner && <div style={{ width: '24px' }} />}
+        </div>
+      </div>
+
+      <div style={{
+        background: '#0c1810', border: '1px solid rgba(255,255,255,.06)', borderRadius: '14px', overflow: 'hidden',
+        boxShadow: '0 1px 0 rgba(255,255,255,.04) inset, 0 4px 24px rgba(0,0,0,.45)',
+      }}>
         {users === null ? (
-          <div className="text-center py-6 text-white/30 text-sm">טוען...</div>
+          <div style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,.3)', fontSize: '14px' }}>טוען...</div>
         ) : users.length === 0 ? (
-          <div className="text-center py-6 text-white/30 text-sm">אין משתתפים עדיין</div>
-        ) : (
-          <table className="w-full min-w-[560px]">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">#</th>
-                <th className="text-right py-3 px-4 text-white/50 font-medium text-sm">שם</th>
-                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">🎯 בול</th>
-                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">↗ כיוון</th>
-                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">🏆 זוכה</th>
-                <th className="text-center py-3 px-2 text-white/50 font-medium text-sm">⚽ מלך שערים</th>
-                <th className="text-center py-3 px-4 text-white/50 font-medium text-sm">נקודות</th>
-                {isOwner && <th className="py-3 px-2"></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user, idx) => (
-                <tr
-                  key={user.id}
-                  className={`border-b border-white/5 last:border-0 transition-colors ${
-                    user.id === me?.id ? 'bg-green-500/10' : 'hover:bg-white/5'
-                  }`}
-                >
-                  <td className="py-3 px-4 text-center">
-                    {MEDALS[idx] || <span className="text-white/40 text-sm">{idx + 1}</span>}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`font-medium ${user.id === me?.id ? 'text-green-400' : ''}`}>
-                      {user.name}
-                    </span>
-                    {user.id === me?.id && <span className="text-xs text-green-400/60 mr-1">(אני)</span>}
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                      user.exact_count > 0 ? 'bg-green-500/25 text-green-400' : 'text-white/20'
-                    }`}>{user.exact_count}</span>
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                      user.direction_count > 0 ? 'bg-yellow-500/25 text-yellow-400' : 'text-white/20'
-                    }`}>{user.direction_count}</span>
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    {user.winner_pick
-                      ? <span className="text-xl" title={user.winner_pick}>{teamFlags[user.winner_pick] || user.winner_pick}</span>
-                      : <span className="text-white/20">—</span>}
-                  </td>
-                  <td className="py-3 px-2 text-center text-xs text-white/70 max-w-[80px]">
-                    {user.top_scorer_pick || <span className="text-white/20">—</span>}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`font-black text-2xl ${
-                      idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-white/80' : idx === 2 ? 'text-orange-400' : 'text-white'
-                    }`}>
-                      {user.total_points}
-                    </span>
-                  </td>
-                  {isOwner && (
-                    <td className="py-3 px-2 text-center">
-                      {user.id !== me?.id && (
-                        <button
-                          onClick={() => handleRemove(user.id, user.name)}
-                          disabled={removing === user.id}
-                          className="text-red-400/60 hover:text-red-400 text-xs px-1.5 py-0.5 rounded transition-colors disabled:opacity-30"
-                          title="הסר מהקבוצה"
-                        >
-                          {removing === user.id ? '...' : '✕'}
-                        </button>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <div style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,.3)', fontSize: '14px' }}>אין משתתפים עדיין</div>
+        ) : users.map((user, i) => (
+          <div key={user.id} style={{
+            display: 'flex', alignItems: 'center', padding: '11px 14px',
+            borderBottom: i < users.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none',
+            background: user.id === me?.id ? 'rgba(30,222,98,.05)' : 'transparent', transition: 'background .15s',
+          }}
+            onMouseEnter={e => { if (user.id !== me?.id) e.currentTarget.style.background = 'rgba(255,255,255,.025)' }}
+            onMouseLeave={e => { if (user.id !== me?.id) e.currentTarget.style.background = 'transparent' }}
+          >
+            {/* Rank */}
+            <div style={{
+              width: '28px', textAlign: 'center', flexShrink: 0,
+              fontSize: i < 3 ? '18px' : '13px',
+              color: i >= 3 ? 'rgba(255,255,255,.28)' : undefined,
+              fontWeight: i >= 3 ? 600 : undefined,
+            }}>{MEDALS[i] || i + 1}</div>
+
+            {/* Name + progress bar */}
+            <div style={{ flex: 1, margin: '0 10px', minWidth: 0 }}>
+              <div style={{
+                fontSize: '14px', fontWeight: user.id === me?.id ? 700 : 500,
+                color: user.id === me?.id ? '#1ede62' : '#ecf0ed',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {user.name}
+                {user.id === me?.id && <span style={{ fontSize: '10px', opacity: .5, fontWeight: 400 }}>(אני)</span>}
+              </div>
+              <div style={{ marginTop: '4px', height: '3px', width: '100%', maxWidth: '80px', background: 'rgba(255,255,255,.07)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${(user.total_points / maxPts) * 100}%`,
+                  background: i === 0 ? 'linear-gradient(90deg,#f0b429,#1ede62)' : i < 3 ? '#1ede62' : 'rgba(255,255,255,.3)',
+                  borderRadius: '4px',
+                }} />
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {/* Exact */}
+              <div style={{
+                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                background: user.exact_count > 0 ? 'rgba(30,222,98,.15)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '11px', fontWeight: 700,
+                color: user.exact_count > 0 ? '#1ede62' : 'rgba(255,255,255,.2)',
+              }}>{user.exact_count}</div>
+              {/* Direction */}
+              <div style={{
+                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                background: user.direction_count > 0 ? 'rgba(245,200,66,.15)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '11px', fontWeight: 700,
+                color: user.direction_count > 0 ? '#f5c842' : 'rgba(255,255,255,.2)',
+              }}>{user.direction_count}</div>
+              {/* Winner flag */}
+              <div style={{ width: '22px', textAlign: 'center', fontSize: '18px', flexShrink: 0 }}>
+                {user.winner_pick ? (teamFlags[user.winner_pick] || user.winner_pick) : '—'}
+              </div>
+              {/* Top scorer - full name */}
+              <div style={{ width: '90px', flexShrink: 0, overflow: 'hidden' }}>
+                <span style={{
+                  fontSize: '11px', color: 'rgba(255,255,255,.65)', fontWeight: 500,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  display: 'block', textAlign: 'center',
+                }}>{user.top_scorer_pick || '—'}</span>
+              </div>
+              {/* Points */}
+              <div style={{
+                fontSize: '20px', fontWeight: 900, width: '40px', textAlign: 'center',
+                fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                color: i === 0 ? '#f0b429' : i === 1 ? 'rgba(255,255,255,.85)' : i === 2 ? '#cd7f32' : '#ecf0ed',
+              }}>{user.total_points}</div>
+              {/* Remove button */}
+              {isOwner && (
+                <button
+                  onClick={() => handleRemove(user.id, user.name)}
+                  disabled={removing === user.id || user.id === me?.id}
+                  style={{
+                    width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: user.id === me?.id ? 'transparent' : 'rgba(240,74,90,.12)',
+                    border: user.id === me?.id ? 'none' : '1px solid rgba(240,74,90,.2)',
+                    cursor: user.id === me?.id ? 'default' : 'pointer',
+                    color: user.id === me?.id ? 'transparent' : '#f04a58',
+                    fontSize: '12px', transition: 'all .15s',
+                    opacity: removing === user.id ? 0.4 : 1,
+                  }}
+                  onMouseEnter={e => { if (user.id !== me?.id) { e.currentTarget.style.background = 'rgba(240,74,90,.3)'; e.currentTarget.style.borderColor = 'rgba(240,74,90,.5)' } }}
+                  onMouseLeave={e => { if (user.id !== me?.id) { e.currentTarget.style.background = 'rgba(240,74,90,.12)'; e.currentTarget.style.borderColor = 'rgba(240,74,90,.2)' } }}
+                >{removing === user.id ? '...' : '✕'}</button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
 export default function LeaderboardPage() {
-  const [groups, setGroups] = useState([])
-  const [teamFlags, setTeamFlags] = useState({})
+  const [groups, setGroups]         = useState([])
+  const [teamFlags, setTeamFlags]   = useState({})
   const [showCreate, setShowCreate] = useState(false)
-  const [showJoin, setShowJoin] = useState(false)
+  const [showJoin, setShowJoin]     = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
-  const [joinCode, setJoinCode] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [joining, setJoining] = useState(false)
-  const [newGroup, setNewGroup] = useState(null)
+  const [joinCode, setJoinCode]     = useState('')
+  const [creating, setCreating]     = useState(false)
+  const [joining, setJoining]       = useState(false)
+  const [newGroup, setNewGroup]     = useState(null)
   const { user: me } = useAuth()
+
+  const inputSt = {
+    flex: 1, background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.14)',
+    borderRadius: '9px', padding: '9px 13px', color: '#ecf0ed',
+    fontFamily: 'Heebo, sans-serif', fontSize: '13px',
+    outline: 'none', transition: 'border-color .15s',
+  }
 
   useEffect(() => {
     api.get('/api/matches/teams')
@@ -199,84 +254,95 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-black">🏆 טבלת דירוג</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setShowJoin(v => !v); setShowCreate(false) }}
-            className="btn-secondary text-sm py-1.5 px-3"
-          >
-            🔗 הצטרף
-          </button>
-          <button
-            onClick={() => { setShowCreate(v => !v); setShowJoin(false); setNewGroup(null) }}
-            className="btn-secondary text-sm py-1.5 px-3"
-          >
-            + קבוצה חדשה
-          </button>
+    <div style={{ paddingBottom: '100px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800 }}>טבלת דירוג</h1>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => { setShowJoin(v => !v); setShowCreate(false) }} style={{
+            background: showJoin ? '#1ede62' : 'rgba(255,255,255,.07)',
+            color:      showJoin ? '#000'    : 'rgba(255,255,255,.6)',
+            fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '13px',
+            padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', transition: 'all .15s',
+          }}>🔗 הצטרף לקבוצה</button>
+          <button onClick={() => { setShowCreate(v => !v); setShowJoin(false); setNewGroup(null) }} style={{
+            background: showCreate ? '#1ede62' : 'rgba(255,255,255,.07)',
+            color:      showCreate ? '#000'    : 'rgba(255,255,255,.6)',
+            fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '13px',
+            padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', transition: 'all .15s',
+          }}>+ קבוצה חדשה</button>
         </div>
       </div>
 
-      {/* Join existing group form */}
+      {/* Join form */}
       {showJoin && (
-        <form onSubmit={handleJoinGroup} className="card mb-4 flex gap-2">
-          <input
-            type="text"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value)}
-            placeholder="הזן קוד קבוצה"
-            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm font-mono"
-            autoFocus
-          />
-          <button type="submit" disabled={joining || !joinCode.trim()} className="btn-primary text-sm py-2 px-4">
-            {joining ? '...' : 'הצטרף'}
-          </button>
+        <form onSubmit={handleJoinGroup} style={{
+          background: 'rgba(30,222,98,.06)', border: '1px solid rgba(30,222,98,.2)',
+          borderRadius: '12px', padding: '14px 16px', marginBottom: '18px',
+          display: 'flex', flexDirection: 'column', gap: '10px',
+        }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.5)', margin: 0 }}>הכנס את קוד הקבוצה שקיבלת:</p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="ABC123" style={{ ...inputSt, letterSpacing: '3px', fontWeight: 700 }}
+              onFocus={e => e.target.style.borderColor = '#1ede62'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
+              autoFocus
+            />
+            <button type="submit" disabled={joining || joinCode.length < 4} style={{
+              background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif', fontWeight: 700,
+              fontSize: '13px', padding: '9px 18px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+              opacity: joinCode.length < 4 ? 0.4 : 1, transition: 'opacity .15s',
+            }}>{joining ? '...' : 'הצטרף'}</button>
+          </div>
         </form>
       )}
 
-      {/* Create new group form */}
+      {/* Create form */}
       {showCreate && (
-        <form onSubmit={handleCreateGroup} className="card mb-4 flex gap-2">
-          <input
-            type="text"
-            value={newGroupName}
-            onChange={e => setNewGroupName(e.target.value)}
-            placeholder='שם הקבוצה (למשל: "משפחה")'
-            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-green-400 text-sm"
-            autoFocus
-          />
-          <button type="submit" disabled={creating || !newGroupName.trim()} className="btn-primary text-sm py-2 px-4">
-            {creating ? '...' : 'צור'}
-          </button>
+        <form onSubmit={handleCreateGroup} style={{
+          background: 'rgba(96,165,250,.06)', border: '1px solid rgba(96,165,250,.2)',
+          borderRadius: '12px', padding: '14px 16px', marginBottom: '18px',
+          display: 'flex', flexDirection: 'column', gap: '10px',
+        }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.5)', margin: 0 }}>שם הקבוצה החדשה:</p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+              placeholder='"חברים מהעבודה"' style={inputSt}
+              onFocus={e => e.target.style.borderColor = '#60a5fa'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
+              autoFocus
+            />
+            <button type="submit" disabled={creating || !newGroupName.trim()} style={{
+              background: '#60a5fa', color: '#000', fontFamily: 'Heebo, sans-serif', fontWeight: 700,
+              fontSize: '13px', padding: '9px 18px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+              opacity: !newGroupName.trim() ? 0.4 : 1, transition: 'opacity .15s',
+            }}>{creating ? '...' : 'צור וקבל קוד'}</button>
+          </div>
         </form>
       )}
 
       {/* New group created banner */}
       {newGroup && (
-        <div
-          className="card mb-4 bg-green-500/10 border-green-500/30 cursor-pointer"
-          onClick={() => { navigator.clipboard?.writeText(newGroup.code); toast.success('קוד הועתק!') }}
-        >
-          <p className="text-sm text-green-400/80 mb-1">✅ הקבוצה "<strong>{newGroup.name}</strong>" נוצרה!</p>
-          <p className="text-sm text-white/60">קוד הצטרפות:
-            <code className="mr-2 text-green-300 font-mono font-bold tracking-wider">{newGroup.code}</code>
-            <span className="text-xs text-white/30">(לחץ להעתקה)</span>
+        <div style={{
+          background: 'rgba(30,222,98,.08)', border: '1px solid rgba(30,222,98,.25)',
+          borderRadius: '12px', padding: '14px 16px', marginBottom: '18px', cursor: 'pointer',
+        }} onClick={() => { navigator.clipboard?.writeText(newGroup.code); toast.success('קוד הועתק!') }}>
+          <p style={{ fontSize: '13px', color: 'rgba(30,222,98,.8)', margin: '0 0 4px' }}>✅ הקבוצה "<strong>{newGroup.name}</strong>" נוצרה!</p>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.6)', margin: 0 }}>
+            קוד הצטרפות: <code style={{ color: '#1ede62', fontWeight: 700, letterSpacing: '2px', marginRight: '6px' }}>{newGroup.code}</code>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.3)' }}>(לחץ להעתקה)</span>
           </p>
         </div>
       )}
 
-      {/* No groups */}
       {groups.length === 0 && (
-        <div className="text-center py-12 text-white/30">
-          <p className="text-4xl mb-3">🏆</p>
+        <div style={{ textAlign: 'center', padding: '64px 0', color: 'rgba(255,255,255,.25)' }}>
+          <p style={{ fontSize: '48px', marginBottom: '12px' }}>🏆</p>
           <p>עדיין לא שייך לקבוצה</p>
-          <p className="text-sm mt-1">צור קבוצה חדשה או הצטרף לקיימת</p>
+          <p style={{ fontSize: '13px', marginTop: '6px' }}>צור קבוצה חדשה או הצטרף לקיימת</p>
         </div>
       )}
 
-      {/* One table per group */}
       {groups.map(group => (
         <GroupTable
           key={group.id}

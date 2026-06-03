@@ -4,8 +4,10 @@
 
 @layer base {
   body {
-    @apply bg-pitch-900 text-white font-sans;
+    background: #050c07;
+    color: #ecf0ed;
     direction: rtl;
+    font-family: 'Heebo', sans-serif;
   }
 
   * {
@@ -14,9 +16,31 @@
 
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {
-    appearance: none;
+    -webkit-appearance: none;
     margin: 0;
   }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@keyframes livepulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .3; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+
+/* Responsive nav visibility */
+@media (max-width: 640px) {
+  .desk-nav, .desk-name { display: none !important; }
+}
+@media (min-width: 641px) {
+  .mob-nav, .mob-title { display: none !important; }
 }
 
 @layer components {
@@ -31,5 +55,4 @@
   .btn-secondary {
     @apply bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-2.5 rounded-lg transition-colors;
   }
-
 }

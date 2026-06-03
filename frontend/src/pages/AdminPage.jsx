@@ -46,18 +46,19 @@ function ManualScoreRow({ match, onSave }) {
     setSaving(false)
   }
 
+  const inSt = { width: '40px', height: '32px', textAlign: 'center', fontSize: '14px', fontWeight: 700, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.2)', borderRadius: '6px', color: '#fff', outline: 'none', fontFamily: 'Heebo, sans-serif' }
   return (
-    <div className="flex items-center justify-center gap-2 mt-3 p-2 bg-white/5 rounded-lg border border-white/10">
-      <span className="text-xs text-white/40">עדכון ידני:</span>
-      <input type="number" min="0" max="20" value={h} onChange={e => setH(e.target.value)}
-        className="w-10 h-8 text-center text-sm font-bold bg-black/40 border border-white/20 rounded text-white focus:outline-none focus:border-orange-400" />
-      <span className="text-white/40">–</span>
-      <input type="number" min="0" max="20" value={a} onChange={e => setA(e.target.value)}
-        className="w-10 h-8 text-center text-sm font-bold bg-black/40 border border-white/20 rounded text-white focus:outline-none focus:border-orange-400" />
-      <button onClick={save} disabled={saving || h === '' || a === ''}
-        className="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 font-medium">
-        {saving ? '...' : '✔ שמור'}
-      </button>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px', padding: '8px 12px', background: 'rgba(255,255,255,.04)', borderRadius: '10px', border: '1px solid rgba(255,255,255,.08)' }}>
+      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>עדכון ידני:</span>
+      <input type="number" min="0" max="20" value={h} onChange={e => setH(e.target.value)} style={inSt} />
+      <span style={{ color: 'rgba(255,255,255,.3)' }}>–</span>
+      <input type="number" min="0" max="20" value={a} onChange={e => setA(e.target.value)} style={inSt} />
+      <button onClick={save} disabled={saving || h === '' || a === ''} style={{
+        background: 'rgba(251,146,60,.15)', color: '#fb923c', border: '1px solid rgba(251,146,60,.25)',
+        fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+        padding: '5px 12px', borderRadius: '7px', cursor: saving || h === '' || a === '' ? 'default' : 'pointer',
+        opacity: h === '' || a === '' ? 0.4 : 1,
+      }}>{saving ? '...' : '✔ שמור'}</button>
     </div>
   )
 }
@@ -100,64 +101,48 @@ function MatchResultRow({ match, teams, onSaved }) {
     }
   }
 
+  const cellSt = { padding: '11px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,.04)' }
+  const numSt = { width: '44px', textAlign: 'center', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '6px', padding: '4px', fontSize: '13px', fontWeight: 700, color: '#fff', outline: 'none', fontFamily: 'Heebo, sans-serif' }
+  const selSt = { flex: 1, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '6px', padding: '4px 6px', fontSize: '11px', color: '#fff', outline: 'none' }
   return (
-    <tr className="border-b border-white/5 last:border-0">
-      <td className="py-3 px-4 text-sm text-white/50">
+    <tr>
+      <td style={{ ...cellSt, color: 'rgba(255,255,255,.4)', fontSize: '12px' }}>
         {formatIsrael(match.scheduled_at)}
-        <div className="text-xs">{STAGE_LABELS[match.stage]}{match.group_name && ` · ${match.group_name}`}</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.25)', marginTop: '2px' }}>{STAGE_LABELS[match.stage]}{match.group_name && ` · ${match.group_name}`}</div>
       </td>
-      <td className="py-3 px-4 text-sm">
+      <td style={cellSt}>
         {needsTeams ? (
-          <div className="flex gap-1">
-            <select
-              value={homeTeamId}
-              onChange={e => setHomeTeamId(e.target.value)}
-              className="flex-1 bg-white/10 border border-white/10 rounded px-2 py-1 text-xs text-white"
-            >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <select value={homeTeamId} onChange={e => setHomeTeamId(e.target.value)} style={selSt}>
               <option value="">בית</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.flag} {t.name}</option>)}
             </select>
-            <span className="text-white/30 self-center">-</span>
-            <select
-              value={awayTeamId}
-              onChange={e => setAwayTeamId(e.target.value)}
-              className="flex-1 bg-white/10 border border-white/10 rounded px-2 py-1 text-xs text-white"
-            >
+            <span style={{ color: 'rgba(255,255,255,.3)' }}>-</span>
+            <select value={awayTeamId} onChange={e => setAwayTeamId(e.target.value)} style={selSt}>
               <option value="">אורח</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.flag} {t.name}</option>)}
             </select>
-            <button onClick={saveTeams} disabled={saving} className="btn-secondary text-xs py-1 px-2">שמור</button>
+            <button onClick={saveTeams} disabled={saving} style={{
+              background: 'rgba(30,222,98,.15)', color: '#1ede62', border: '1px solid rgba(30,222,98,.2)',
+              fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
+            }}>שמור</button>
           </div>
         ) : (
-          <span>
-            {match.home_team?.flag} {match.home_team?.name} <span className="text-white/30">-</span> {match.away_team?.flag} {match.away_team?.name}
-          </span>
+          <span>{match.home_team?.flag} {match.home_team?.name} <span style={{ color: 'rgba(255,255,255,.3)' }}>–</span> {match.away_team?.flag} {match.away_team?.name}</span>
         )}
       </td>
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-1">
-          <input
-            type="number" min="0" max="99"
-            value={home}
-            onChange={e => setHome(e.target.value)}
-            className="w-12 text-center bg-white/10 border border-white/10 rounded px-1 py-1 text-sm text-white"
-            placeholder="0"
-          />
-          <span className="text-white/30">-</span>
-          <input
-            type="number" min="0" max="99"
-            value={away}
-            onChange={e => setAway(e.target.value)}
-            className="w-12 text-center bg-white/10 border border-white/10 rounded px-1 py-1 text-sm text-white"
-            placeholder="0"
-          />
-          <button
-            onClick={saveResult}
-            disabled={saving}
-            className={`text-xs px-2 py-1 rounded font-medium transition-colors ${match.status === 'finished' ? 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-300 hover:bg-green-500/30'}`}
-          >
-            {saving ? '...' : match.status === 'finished' ? '✏️' : '✓'}
-          </button>
+      <td style={cellSt}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <input type="number" min="0" max="99" value={home} onChange={e => setHome(e.target.value)} placeholder="0" style={numSt} />
+          <span style={{ color: 'rgba(255,255,255,.3)' }}>–</span>
+          <input type="number" min="0" max="99" value={away} onChange={e => setAway(e.target.value)} placeholder="0" style={numSt} />
+          <button onClick={saveResult} disabled={saving} style={{
+            background: match.status === 'finished' ? 'rgba(245,200,66,.15)' : 'rgba(30,222,98,.15)',
+            color: match.status === 'finished' ? '#f5c842' : '#1ede62',
+            border: `1px solid ${match.status === 'finished' ? 'rgba(245,200,66,.25)' : 'rgba(30,222,98,.2)'}`,
+            fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+            padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', opacity: saving ? 0.5 : 1,
+          }}>{saving ? '...' : match.status === 'finished' ? '✏️' : '✓'}</button>
         </div>
       </td>
     </tr>
@@ -393,142 +378,137 @@ export default function AdminPage() {
   const pendingMatches = matches.filter(m => m.status === 'upcoming')
   const finishedMatches = matches.filter(m => m.status === 'finished')
 
-  if (loading) return <div className="text-center py-20 text-white/40">טוען...</div>
+  if (loading) return <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,.3)', fontSize: '14px' }}>טוען...</div>
+
+  const inputSt = {
+    background: 'rgba(0,0,0,.35)', border: '1px solid rgba(255,255,255,.14)',
+    borderRadius: '9px', padding: '9px 13px', color: '#ecf0ed',
+    fontFamily: 'Heebo, sans-serif', fontSize: '13px',
+    outline: 'none', transition: 'border-color .15s',
+  }
+  const tableSt = {
+    background: '#0c1810', border: '1px solid rgba(255,255,255,.06)', borderRadius: '14px', overflow: 'hidden',
+    boxShadow: '0 1px 0 rgba(255,255,255,.04) inset, 0 4px 24px rgba(0,0,0,.4)',
+  }
+  const th = { padding: '10px 16px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,.3)', borderBottom: '1px solid rgba(255,255,255,.06)', textAlign: 'right' }
+  const td = { padding: '11px 16px', fontSize: '13px', borderBottom: '1px solid rgba(255,255,255,.04)' }
+
+  const ADMIN_TABS = [
+    { key: 'groups',   label: `🏷️ קבוצות (${groups.length})` },
+    { key: 'matches',  label: `⏳ ממתינים (${pendingMatches.length})` },
+    { key: 'finished', label: `✅ גמורים (${finishedMatches.length})` },
+    { key: 'special',  label: '⭐ מיוחדים' },
+    { key: 'users',    label: `👥 משתמשים (${users.length})` },
+    { key: 'test',     label: `🧪 טסט (${testMatches.length})` },
+  ]
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <h1 className="text-2xl font-black">🛠 פאנל ניהול</h1>
-        <div className="flex items-center gap-3">
+    <div style={{ paddingBottom: '100px' }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 800 }}>🛠 פאנל ניהול</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {syncStatus && (
-            <div className="text-xs text-white/40 text-left flex flex-col gap-0.5">
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {syncStatus.error ? (
-                <span className="text-red-400">{syncStatus.error}</span>
+                <span style={{ color: '#f04a58' }}>{syncStatus.error}</span>
               ) : syncStatus.last_sync_at ? (
                 <span>סונכרן: {formatIsrael(syncStatus.last_sync_at)}</span>
               ) : (
                 <span>{syncStatus.api_configured ? 'טרם סונכרן' : 'API לא מוגדר'}</span>
               )}
               {syncStatus.unlinked_count > 0 && (
-                <details className="cursor-pointer">
-                  <summary className="text-orange-400">⚠️ {syncStatus.unlinked_count} משחקים ללא fixture_id</summary>
-                  <ul className="mt-1 space-y-0.5 text-white/50 pr-2">
-                    {syncStatus.unlinked_matches?.map(m => (
-                      <li key={m}>· {m}</li>
-                    ))}
+                <details style={{ cursor: 'pointer' }}>
+                  <summary style={{ color: '#fb923c' }}>⚠️ {syncStatus.unlinked_count} משחקים ללא fixture_id</summary>
+                  <ul style={{ marginTop: '4px', paddingRight: '8px', color: 'rgba(255,255,255,.4)' }}>
+                    {syncStatus.unlinked_matches?.map(m => <li key={m}>· {m}</li>)}
                   </ul>
                 </details>
               )}
             </div>
           )}
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <span className={syncing ? 'animate-spin' : ''}>🔄</span>
-            {syncing ? 'מסנכרן...' : 'סנכרן תוצאות'}
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const { data } = await api.post('/api/admin/link-fixtures')
-                toast.success(`🔗 קושרו ${data.linked}/${data.total_api} משחקים${data.not_found?.length ? ` · לא נמצאו: ${data.not_found.length}` : ''}`)
-                if (data.not_found?.length) console.warn('לא נמצאו:', data.not_found)
-              } catch (e) {
-                toast.error(e.response?.data?.detail || 'שגיאה')
+          {[
+            { label: syncing ? 'מסנכרן...' : '🔄 סנכרן תוצאות', bg: 'rgba(96,165,250,.12)', text: '#60a5fa', border: 'rgba(96,165,250,.2)', onClick: handleSync, disabled: syncing },
+            { label: '🔗 קשר fixtures', bg: 'rgba(168,85,247,.12)', text: '#c084fc', border: 'rgba(168,85,247,.2)', onClick: async () => {
+                try {
+                  const { data } = await api.post('/api/admin/link-fixtures')
+                  toast.success(`🔗 קושרו ${data.linked}/${data.total_api} משחקים${data.not_found?.length ? ` · לא נמצאו: ${data.not_found.length}` : ''}`)
+                  if (data.not_found?.length) console.warn('לא נמצאו:', data.not_found)
+                } catch (e) { toast.error(e.response?.data?.detail || 'שגיאה') }
               }
-            }}
-            className="flex items-center gap-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-          >
-            🔗 קשר fixtures
-          </button>
+            },
+          ].map(b => (
+            <button key={b.label} onClick={b.onClick} disabled={b.disabled} style={{
+              background: b.bg, color: b.text, border: `1px solid ${b.border}`,
+              fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+              padding: '7px 13px', borderRadius: '9px', cursor: 'pointer', transition: 'all .15s',
+              opacity: b.disabled ? 0.5 : 1,
+            }}>{b.label}</button>
+          ))}
         </div>
       </div>
 
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
-        {['groups', 'matches', 'finished', 'special', 'users', 'test'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${activeTab === tab ? (tab === 'test' ? 'bg-orange-500 text-black' : 'bg-green-500 text-black') : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-          >
-            {tab === 'groups' ? `🏷️ קבוצות (${groups.length})`
-              : tab === 'matches' ? `⏳ ממתינים (${pendingMatches.length})`
-              : tab === 'finished' ? `✅ גמורים (${finishedMatches.length})`
-              : tab === 'special' ? '⭐ מיוחדים'
-              : tab === 'test' ? `🧪 טסט (${testMatches.length})`
-              : `👥 משתמשים (${users.length})`}
-          </button>
+      {/* Tab strip */}
+      <div style={{ display: 'flex', gap: '7px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '18px', scrollbarWidth: 'none' }}>
+        {ADMIN_TABS.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+            whiteSpace: 'nowrap', padding: '7px 15px', borderRadius: '100px', border: 'none',
+            cursor: 'pointer', fontFamily: 'Heebo, sans-serif', fontSize: '13px', fontWeight: 500, flexShrink: 0,
+            background: activeTab === t.key ? (t.key === 'test' ? '#f0b429' : '#1ede62') : 'rgba(255,255,255,.07)',
+            color:      activeTab === t.key ? '#000' : 'rgba(255,255,255,.6)',
+            transition: 'all .15s',
+          }}>{t.label}</button>
         ))}
       </div>
 
+      {/* ── GROUPS */}
       {activeTab === 'groups' && (
-        <div className="flex flex-col gap-4">
-          <div className="card flex gap-2">
-            <input
-              type="text"
-              value={newGroupName}
-              onChange={e => setNewGroupName(e.target.value)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createGroup()}
-              placeholder="שם הקבוצה החדשה (למשל: חברים מהעבודה)"
-              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-green-400"
+              placeholder="שם הקבוצה החדשה" style={{ ...inputSt, flex: 1 }}
+              onFocus={e => e.target.style.borderColor = '#1ede62'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
             />
-            <button
-              onClick={createGroup}
-              disabled={creatingGroup || !newGroupName.trim()}
-              className="btn-primary"
-            >
-              {creatingGroup ? '...' : '+ צור קבוצה'}
-            </button>
+            <button onClick={createGroup} disabled={creatingGroup || !newGroupName.trim()} style={{
+              background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
+              fontWeight: 700, fontSize: '13px', padding: '9px 18px', borderRadius: '9px', border: 'none',
+              cursor: creatingGroup || !newGroupName.trim() ? 'default' : 'pointer',
+              opacity: !newGroupName.trim() ? 0.4 : 1,
+            }}>{creatingGroup ? '...' : '+ צור קבוצה'}</button>
           </div>
 
           {groups.length === 0 ? (
-            <div className="text-center py-8 text-white/30">אין קבוצות עדיין</div>
+            <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,.3)' }}>אין קבוצות עדיין</div>
           ) : (
-            <div className="card overflow-hidden p-0 overflow-x-auto">
-              <table className="w-full min-w-[380px]">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם הקבוצה</th>
-                    <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">קוד הצטרפות</th>
-                    <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">חברים</th>
-                    <th className="py-3 px-4"></th>
-                  </tr>
-                </thead>
+            <div style={{ ...tableSt, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '380px' }}>
+                <thead><tr>
+                  <th style={th}>שם הקבוצה</th>
+                  <th style={th}>קוד הצטרפות</th>
+                  <th style={{ ...th, textAlign: 'center' }}>חברים</th>
+                  <th style={{ ...th, width: '60px' }}></th>
+                </tr></thead>
                 <tbody>
-                  {groups.map(g => (
-                    <tr key={g.id} className="border-b border-white/5 last:border-0">
-                      <td className="py-3 px-4 font-medium">{g.name}</td>
-                      <td className="py-3 px-4">
-                        <code
-                          className="bg-green-500/20 text-green-300 px-3 py-1 rounded-lg text-sm font-mono cursor-pointer hover:bg-green-500/30"
-                          onClick={() => {
-                            navigator.clipboard?.writeText(g.code)
-                            toast.success('קוד הועתק!')
-                          }}
-                          title="לחץ להעתקה"
-                        >
+                  {groups.map((g, i) => (
+                    <tr key={g.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.015)' }}>
+                      <td style={td}>{g.name}</td>
+                      <td style={td}>
+                        <code onClick={() => { navigator.clipboard?.writeText(g.code); toast.success('קוד הועתק!') }}
+                          style={{ background: 'rgba(30,222,98,.12)', color: '#1ede62', padding: '3px 10px', borderRadius: '8px', fontSize: '13px', letterSpacing: '1px', cursor: 'pointer' }}>
                           {g.code}
                         </code>
                       </td>
-                      <td className="py-3 px-4 text-center text-white/60 relative group/members cursor-default select-none">
-                        <span className={g.member_count > 0 ? 'underline decoration-dotted decoration-white/30' : ''}>
-                          {g.member_count}
-                        </span>
-                        {g.member_names?.length > 0 && (
-                          <div className="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-1 bg-pitch-800 border border-white/20 rounded-lg px-3 py-2 text-xs text-white shadow-xl opacity-0 group-hover/members:opacity-100 pointer-events-none transition-opacity whitespace-nowrap text-right">
-                            {g.member_names.map((n, i) => <div key={i}>{n}</div>)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => deleteGroup(g.id, g.name)}
-                          className="text-red-400/50 hover:text-red-400 text-xs transition-colors"
-                        >
-                          מחק
-                        </button>
+                      <td style={{ ...td, textAlign: 'center', color: 'rgba(255,255,255,.5)' }}>{g.member_count}</td>
+                      <td style={{ ...td, textAlign: 'center' }}>
+                        <button onClick={() => deleteGroup(g.id, g.name)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(240,74,90,.45)',
+                          fontSize: '12px', fontFamily: 'Heebo, sans-serif', transition: 'color .15s',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.color = '#f04a58'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,74,90,.45)'}
+                        >מחק</button>
                       </td>
                     </tr>
                   ))}
@@ -537,28 +517,21 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="card text-sm text-white/50 bg-blue-500/5 border-blue-500/20">
-            <p className="font-medium text-white/70 mb-1">💡 איך זה עובד:</p>
-            <ul className="space-y-1">
-              <li>צור קבוצה לכל חוג חברים — עבודה, משפחה, חברים מהצבא...</li>
-              <li>שתף את קוד ההצטרפות עם החברים ← הם יצטרפו עם הקוד הזה</li>
-              <li>כל קבוצה רואה טבלת דירוג נפרדת משלה בדף הטבלה</li>
-              <li>הניחושים עצמם משותפים — כל משתמש מנחש פעם אחת</li>
-            </ul>
+          <div style={{ background: 'rgba(96,165,250,.06)', border: '1px solid rgba(96,165,250,.15)', borderRadius: '12px', padding: '14px 16px', fontSize: '12px', color: 'rgba(255,255,255,.45)', lineHeight: 1.7 }}>
+            💡 צור קבוצה לכל חוג — עבודה, משפחה, חברים. שתף את הקוד, כל אחד מצטרף עצמאית. הניחושים משותפים לכולם.
           </div>
         </div>
       )}
 
+      {/* ── MATCHES / FINISHED */}
       {(activeTab === 'matches' || activeTab === 'finished') && (
-        <div className="card overflow-hidden p-0 overflow-x-auto">
-          <table className="w-full min-w-[520px]">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">תאריך</th>
-                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">משחק</th>
-                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">תוצאה</th>
-              </tr>
-            </thead>
+        <div style={{ ...tableSt, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '520px' }}>
+            <thead><tr>
+              <th style={th}>תאריך</th>
+              <th style={th}>משחק</th>
+              <th style={{ ...th, textAlign: 'center' }}>תוצאה</th>
+            </tr></thead>
             <tbody>
               {(activeTab === 'matches' ? pendingMatches : finishedMatches).map(m => (
                 <MatchResultRow key={m.id} match={m} teams={teams} onSaved={loadData} />
@@ -568,149 +541,129 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── SPECIAL */}
       {activeTab === 'special' && (
-        <div className="card max-w-md">
-          <h2 className="font-bold mb-4">הגדרת תוצאה לניחושים מיוחדים</h2>
-          <div className="flex flex-col gap-3">
-            <select
-              value={specialType}
-              onChange={e => {
-                setSpecialType(e.target.value)
-                setSpecialPoints(15)
-                setSpecialValue('')
-              }}
-              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-            >
-              <option value="winner">🏆 זוכה המונדיאל (15 נק׳)</option>
-              <option value="top_scorer">⚽ מלך השערים (15 נק׳)</option>
-            </select>
-
-            {specialType === 'winner' ? (
-              <TeamPicker value={specialValue} onChange={setSpecialValue} />
-            ) : (
-              <PlayerPicker value={specialValue} onChange={setSpecialValue} />
-            )}
-
-            {specialValue && (
-              <div className="text-sm text-white/60">
-                נבחר: <span className="text-white font-medium">{specialValue}</span>
+        <div style={{ maxWidth: '420px' }}>
+          <div style={{ ...tableSt, padding: '20px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>הגדרת תוצאה לניחושים מיוחדים</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>סוג הניחוש</label>
+                <select value={specialType} onChange={e => { setSpecialType(e.target.value); setSpecialPoints(15); setSpecialValue('') }}
+                  style={{ ...inputSt, width: '100%', cursor: 'pointer' }}>
+                  <option value="winner">🏆 זוכה המונדיאל (15 נק׳)</option>
+                  <option value="top_scorer">⚽ מלך השערים (15 נק׳)</option>
+                </select>
               </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-white/60">נקודות:</label>
-              <input
-                type="number"
-                value={specialPoints}
-                onChange={e => setSpecialPoints(parseInt(e.target.value) || 0)}
-                className="w-20 bg-white/10 border border-white/20 rounded px-2 py-1 text-white"
-              />
+              {specialType === 'winner' ? (
+                <TeamPicker value={specialValue} onChange={setSpecialValue} />
+              ) : (
+                <PlayerPicker value={specialValue} onChange={setSpecialValue} />
+              )}
+              {specialValue && (
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.5)', padding: '8px 12px', background: 'rgba(255,255,255,.04)', borderRadius: '8px' }}>
+                  נבחר: <span style={{ color: '#fff', fontWeight: 600 }}>{specialValue}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontSize: '12px', color: 'rgba(255,255,255,.5)' }}>נקודות:</label>
+                <input type="number" value={specialPoints} onChange={e => setSpecialPoints(parseInt(e.target.value) || 0)}
+                  style={{ ...inputSt, width: '70px', textAlign: 'center' }} />
+              </div>
+              <button onClick={handleSpecialResult} disabled={saving || !specialValue.trim()} style={{
+                background: specialValue ? '#1ede62' : 'rgba(255,255,255,.07)',
+                color: specialValue ? '#000' : 'rgba(255,255,255,.3)',
+                fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '14px',
+                padding: '11px', borderRadius: '9px', border: 'none',
+                cursor: saving || !specialValue.trim() ? 'default' : 'pointer', transition: 'all .15s',
+              }}>הענק נקודות</button>
             </div>
-            <button onClick={handleSpecialResult} disabled={saving || !specialValue.trim()} className="btn-primary">
-              {saving ? '...' : 'הענק נקודות'}
-            </button>
           </div>
         </div>
       )}
 
+      {/* ── USERS */}
       {activeTab === 'users' && (
-        <div className="card overflow-hidden p-0 overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">שם</th>
-                <th className="text-right py-3 px-4 text-white/50 text-sm font-medium">קבוצות</th>
-                <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">נוצר</th>
-                <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">ניחושים</th>
-                <th className="text-center py-3 px-4 text-white/50 text-sm font-medium">נקודות</th>
-                <th className="py-3 px-2"></th>
-              </tr>
-            </thead>
+        <div style={{ ...tableSt, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '580px' }}>
+            <thead><tr>
+              <th style={th}>שם</th>
+              <th style={th}>קבוצות</th>
+              <th style={{ ...th, textAlign: 'center' }}>נוצר</th>
+              <th style={{ ...th, textAlign: 'center' }}>ניחושים</th>
+              <th style={{ ...th, textAlign: 'center' }}>נקודות</th>
+              <th style={{ ...th, width: '80px' }}></th>
+            </tr></thead>
             <tbody>
-              {[...users].sort((a, b) => b.total_points - a.total_points).map((u) => (
+              {[...users].sort((a, b) => b.total_points - a.total_points).map((u, i) => (
                 <Fragment key={u.id}>
-                  <tr className="border-b border-white/5">
-                    <td className="py-3 px-4">
-                      {u.name}
-                      {u.is_admin && <span className="mr-2 text-xs text-green-400">(admin)</span>}
+                  <tr style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.015)' }}>
+                    <td style={td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {u.name}
+                        {u.is_admin && <span style={{ fontSize: '10px', color: '#1ede62', background: 'rgba(30,222,98,.12)', padding: '1px 6px', borderRadius: '4px' }}>admin</span>}
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-white/50">
-                      {u.group_names?.length > 0
-                        ? u.group_names.map((gn, i) => (
-                            <span key={i} className="inline-block bg-white/10 rounded px-1.5 py-0.5 text-xs ml-1 mb-0.5">{gn}</span>
-                          ))
-                        : <span className="text-white/20">—</span>
-                      }
+                    <td style={{ ...td, color: 'rgba(255,255,255,.45)' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {u.group_names?.length > 0
+                          ? u.group_names.map((gn, j) => (
+                              <span key={j} style={{ fontSize: '11px', background: 'rgba(255,255,255,.08)', padding: '2px 8px', borderRadius: '6px', color: 'rgba(255,255,255,.6)' }}>{gn}</span>
+                            ))
+                          : <span style={{ color: 'rgba(255,255,255,.2)' }}>—</span>
+                        }
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-center text-white/50 text-xs">{formatDate(u.created_at)}</td>
-                    <td className="py-3 px-4 text-center text-white/60 text-sm">{u.prediction_count}</td>
-                    <td className="py-3 px-4 text-center font-bold">{u.total_points}</td>
-                    <td className="py-3 px-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => setResetPw(resetPw?.id === u.id ? null : { id: u.id, value: '' })}
-                          className="text-yellow-400/50 hover:text-yellow-400 text-xs transition-colors"
-                          title="אפס סיסמה"
-                        >
-                          🔑
-                        </button>
+                    <td style={{ ...td, textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: '11px' }}>{formatDate(u.created_at)}</td>
+                    <td style={{ ...td, textAlign: 'center', color: 'rgba(255,255,255,.5)' }}>{u.prediction_count}</td>
+                    <td style={{ ...td, textAlign: 'center', fontWeight: 700 }}>{u.total_points}</td>
+                    <td style={{ ...td, textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        <button onClick={() => setResetPw(resetPw?.id === u.id ? null : { id: u.id, value: '' })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: .5, transition: 'opacity .15s' }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={e => e.currentTarget.style.opacity = '.5'}
+                        >🔑</button>
                         {!u.is_admin && (
-                          <button
-                            onClick={() => handleDeleteUser(u.id, u.name)}
-                            disabled={deletingUser === u.id}
-                            className="text-red-400/50 hover:text-red-400 text-xs transition-colors disabled:opacity-30"
-                          >
-                            {deletingUser === u.id ? '...' : 'מחק'}
-                          </button>
+                          <button onClick={() => handleDeleteUser(u.id, u.name)} disabled={deletingUser === u.id} style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'rgba(240,74,90,.4)', fontSize: '12px', fontFamily: 'Heebo, sans-serif', transition: 'color .15s',
+                            opacity: deletingUser === u.id ? 0.3 : 1,
+                          }}
+                            onMouseEnter={e => e.currentTarget.style.color = '#f04a58'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,74,90,.4)'}
+                          >{deletingUser === u.id ? '...' : 'מחק'}</button>
                         )}
                       </div>
                     </td>
                   </tr>
                   {resetPw?.id === u.id && (
-                    <tr key={`${u.id}-pw`} className="border-b border-white/5 bg-yellow-500/5">
-                      <td colSpan={6} className="px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-white/50 whitespace-nowrap">סיסמה חדשה עבור {u.name}:</span>
-                          <input
-                            type="text"
-                            value={resetPw.value}
-                            onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
-                            placeholder="לפחות 4 תווים"
-                            className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-yellow-400 font-mono"
-                            autoFocus
+                    <tr key={`${u.id}-pw`} style={{ background: 'rgba(245,200,66,.04)' }}>
+                      <td colSpan={6} style={{ padding: '10px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)', whiteSpace: 'nowrap' }}>סיסמה חדשה עבור {u.name}:</span>
+                          <input type="text" value={resetPw.value} onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
+                            placeholder="לפחות 4 תווים" autoFocus
+                            style={{ ...inputSt, flex: 1, fontFamily: 'monospace', fontSize: '13px' }}
                             onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
+                            onFocus={e => e.target.style.borderColor = '#f5c842'}
+                            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
                           />
-                          <button
-                            onClick={() => {
-                              const pw = Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 6)
-                              setResetPw(r => ({ ...r, value: pw }))
-                            }}
-                            className="text-white/40 hover:text-white/80 text-xs px-2 py-1.5 rounded transition-colors whitespace-nowrap"
-                            title="צור סיסמה אקראית"
-                          >
-                            🎲
-                          </button>
+                          <button onClick={() => { const pw = Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6); setResetPw(r => ({...r,value:pw})) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', opacity: .5 }}>🎲</button>
                           {resetPw.value && (
-                            <button
-                              onClick={() => { navigator.clipboard.writeText(resetPw.value); toast.success('הועתק!') }}
-                              className="text-white/40 hover:text-white/80 text-xs px-2 py-1.5 rounded transition-colors"
-                              title="העתק"
-                            >
-                              📋
-                            </button>
+                            <button onClick={() => { navigator.clipboard.writeText(resetPw.value); toast.success('הועתק!') }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: .5 }}>📋</button>
                           )}
-                          <button
-                            onClick={() => handleResetPassword(u.id)}
-                            className="bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 text-xs px-3 py-1.5 rounded transition-colors whitespace-nowrap"
-                          >
-                            אפס
-                          </button>
-                          <button
-                            onClick={() => setResetPw(null)}
-                            className="text-white/30 hover:text-white/60 text-xs transition-colors"
-                          >
-                            ✕
-                          </button>
+                          <button onClick={() => handleResetPassword(u.id)} style={{
+                            background: resetPw.value.length >= 4 ? 'rgba(245,200,66,.2)' : 'rgba(255,255,255,.07)',
+                            color: resetPw.value.length >= 4 ? '#f5c842' : 'rgba(255,255,255,.3)',
+                            fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+                            padding: '6px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}>אפס</button>
+                          <button onClick={() => setResetPw(null)} style={{
+                            background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.3)', fontSize: '14px',
+                          }}>✕</button>
                         </div>
                       </td>
                     </tr>
@@ -721,27 +674,34 @@ export default function AdminPage() {
           </table>
         </div>
       )}
+
+      {/* ── TEST */}
       {activeTab === 'test' && (
-        <div className="flex flex-col gap-5">
-          <div className="card border-orange-500/30 bg-orange-500/5">
-            <h2 className="font-bold text-orange-300 mb-4">🧪 הוסף משחק טסט</h2>
-            <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: 'rgba(240,180,40,.06)', border: '1px solid rgba(240,180,40,.2)', borderRadius: '14px', padding: '20px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#f0b429', marginBottom: '16px' }}>🧪 הוסף משחק טסט</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: '10px' }}>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">תאריך</label>
-                  <input type="date" value={testSearchDate}
-                    onChange={e => { setTestSearchDate(e.target.value); setFixtureResults(null) }}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                  <label style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>תאריך</label>
+                  <input type="date" value={testSearchDate} onChange={e => { setTestSearchDate(e.target.value); setFixtureResults(null) }}
+                    style={{ ...inputSt, width: '100%' }}
+                    onFocus={e => e.target.style.borderColor = '#f0b429'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
+                  />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">עונה</label>
+                  <label style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>עונה</label>
                   <input type="number" value={testSeason} onChange={e => setTestSeason(Number(e.target.value))}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
+                    style={{ ...inputSt, width: '100%' }}
+                    onFocus={e => e.target.style.borderColor = '#f0b429'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
+                  />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">סנן לפי שלב</label>
+                  <label style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>סנן לפי שלב</label>
                   <select value={testSearchStage} onChange={e => setTestSearchStage(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400">
+                    style={{ ...inputSt, width: '100%', cursor: 'pointer' }}>
                     <option value="">כל השלבים</option>
                     <option value="group">שלב הבתים</option>
                     <option value="round_of_32">שלב ה-32</option>
@@ -752,45 +712,44 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
-              <button onClick={handleSearchFixtures} disabled={searchingFixtures || !testSearchDate}
-                className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50">
-                {searchingFixtures ? '⏳ מחפש...' : '🔍 חפש משחקים'}
-              </button>
+              <button onClick={handleSearchFixtures} disabled={searchingFixtures || !testSearchDate} style={{
+                background: 'rgba(240,180,40,.15)', color: '#f0b429', border: '1px solid rgba(240,180,40,.25)',
+                fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '13px',
+                padding: '10px', borderRadius: '9px', cursor: searchingFixtures || !testSearchDate ? 'default' : 'pointer',
+                opacity: !testSearchDate ? 0.5 : 1,
+              }}>{searchingFixtures ? '⏳ מחפש...' : '🔍 חפש משחקים'}</button>
 
               {fixtureResults && (
-                <div className="bg-black/30 rounded-lg p-3 flex flex-col gap-2">
+                <div style={{ background: 'rgba(0,0,0,.3)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {fixtureResults.length === 0 ? (
-                    <p className="text-xs text-white/40 text-center">לא נמצאו משחקים</p>
+                    <p style={{ textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,.3)' }}>לא נמצאו משחקים</p>
                   ) : (() => {
                     const STAGE_MAP = {
                       'GROUP_STAGE': 'group', 'ROUND_OF_32': 'round_of_32',
                       'ROUND_OF_16': 'round_of_16', 'QUARTER_FINALS': 'quarter_final',
                       'SEMI_FINALS': 'semi_final', 'FINAL': 'final', 'THIRD_PLACE': 'third_place',
                     }
-                    const filtered = testSearchStage
-                      ? fixtureResults.filter(f => STAGE_MAP[f.stage] === testSearchStage)
-                      : fixtureResults
+                    const filtered = testSearchStage ? fixtureResults.filter(f => STAGE_MAP[f.stage] === testSearchStage) : fixtureResults
                     return filtered.length === 0 ? (
-                      <p className="text-xs text-white/40 text-center">אין משחקים בשלב זה</p>
+                      <p style={{ textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,.3)' }}>אין משחקים בשלב זה</p>
                     ) : filtered.map(f => {
                       const stage = STAGE_MAP[f.stage] || 'group'
                       const alreadyExists = testMatches.some(t => t.api_fixture_id === f.fixture_id)
                       return (
-                        <div key={f.fixture_id} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                          <div className="flex flex-col gap-0.5 text-right flex-1 min-w-0">
-                            <span className="text-sm text-white font-medium truncate">{f.home} vs {f.away}</span>
-                            <span className="text-xs text-white/40">{f.israel_time} 🇮🇱 · {STAGE_LABELS[stage] || stage}</span>
+                        <div key={f.fixture_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: '9px', padding: '10px 12px' }}>
+                          <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.home} vs {f.away}</div>
+                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)', marginTop: '2px' }}>{f.israel_time} 🇮🇱 · {STAGE_LABELS[stage] || stage}</div>
                           </div>
                           {alreadyExists ? (
-                            <span className="text-xs text-green-400 whitespace-nowrap">✅ קיים</span>
+                            <span style={{ fontSize: '12px', color: '#1ede62', whiteSpace: 'nowrap' }}>✅ קיים</span>
                           ) : (
-                            <button
-                              onClick={() => handleCreateTestMatch(f.fixture_id, stage)}
-                              disabled={creatingTest === f.fixture_id}
-                              className="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
-                            >
-                              {creatingTest === f.fixture_id ? '⏳' : '+ הוסף'}
-                            </button>
+                            <button onClick={() => handleCreateTestMatch(f.fixture_id, stage)} disabled={creatingTest === f.fixture_id} style={{
+                              background: 'rgba(240,180,40,.15)', color: '#f0b429', border: '1px solid rgba(240,180,40,.25)',
+                              fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+                              padding: '5px 12px', borderRadius: '7px', cursor: 'pointer', whiteSpace: 'nowrap',
+                              opacity: creatingTest === f.fixture_id ? 0.4 : 1,
+                            }}>{creatingTest === f.fixture_id ? '⏳' : '+ הוסף'}</button>
                           )}
                         </div>
                       )
@@ -802,9 +761,9 @@ export default function AdminPage() {
           </div>
 
           {testMatchCards.length === 0 ? (
-            <div className="text-center py-8 text-white/30">אין משחקי טסט — צור אחד למעלה</div>
+            <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,.2)', fontSize: '13px' }}>אין משחקי טסט — צור אחד למעלה</div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {testMatchCards.map(m => {
                 const meta = testMatches.find(t => t.id === m.id)
                 return (
@@ -813,26 +772,19 @@ export default function AdminPage() {
                       const tcRes = await api.get('/api/admin/test-matches/cards')
                       setTestMatchCards(tcRes.data)
                     }} />
-
-                    {/* Manual score update */}
                     <ManualScoreRow match={m} onSave={handleManualScore} />
-
-                    {/* Management buttons */}
-                    <div className="flex flex-wrap gap-2 mt-2 px-1 justify-center items-center">
-                      {meta && <span className="text-xs text-white/25 w-full text-center">fixture_id: <code className="text-orange-300">{meta.api_fixture_id || '—'}</code></span>}
-                      <button
-                        onClick={() => handleSyncTestMatch(m.id)}
-                        disabled={syncingTest === m.id || !meta?.api_fixture_id}
-                        className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-40"
-                      >
-                        {syncingTest === m.id ? '⏳' : '🔄'} סנכרן API
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTestMatch(m.id)}
-                        className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded-lg transition-colors"
-                      >
-                        🗑️ מחק
-                      </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                      {meta && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.2)', width: '100%', textAlign: 'center' }}>fixture_id: <code style={{ color: '#fb923c' }}>{meta.api_fixture_id || '—'}</code></span>}
+                      <button onClick={() => handleSyncTestMatch(m.id)} disabled={syncingTest === m.id || !meta?.api_fixture_id} style={{
+                        background: 'rgba(96,165,250,.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,.2)',
+                        fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+                        padding: '5px 12px', borderRadius: '7px', cursor: 'pointer', opacity: syncingTest === m.id || !meta?.api_fixture_id ? 0.4 : 1,
+                      }}>{syncingTest === m.id ? '⏳' : '🔄'} סנכרן API</button>
+                      <button onClick={() => handleDeleteTestMatch(m.id)} style={{
+                        background: 'rgba(240,74,90,.15)', color: '#f04a58', border: '1px solid rgba(240,74,90,.2)',
+                        fontFamily: 'Heebo, sans-serif', fontWeight: 600, fontSize: '12px',
+                        padding: '5px 12px', borderRadius: '7px', cursor: 'pointer',
+                      }}>🗑️ מחק</button>
                     </div>
                   </div>
                 )

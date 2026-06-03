@@ -104,33 +104,26 @@ export default function MatchesPage() {
     }
   }, [activeStage, groups, activeGroup])
 
+  const tabBtn = (key, label, onClick) => (
+    <button key={key} onClick={onClick} style={{
+      whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: '100px', border: 'none',
+      cursor: 'pointer', fontFamily: 'Heebo, sans-serif', fontSize: '13px', fontWeight: 500, flexShrink: 0,
+      background: activeStage === key ? '#1ede62' : 'rgba(255,255,255,.07)',
+      color:      activeStage === key ? '#000'    : 'rgba(255,255,255,.6)',
+      transition: 'all .15s',
+    }}>{label}</button>
+  )
+
   if (loading) {
     return (
-      <div>
-        <div className="h-8 w-36 bg-white/10 rounded-full mb-5 animate-pulse" />
-        <div className="flex gap-2 mb-4">
-          {[1,2,3].map(i => <div key={i} className="h-9 w-24 bg-white/10 rounded-full animate-pulse" />)}
+      <div style={{ paddingBottom: '80px' }}>
+        <div style={{ height: '28px', width: '140px', background: 'rgba(255,255,255,.08)', borderRadius: '100px', marginBottom: '20px', animation: 'pulse 1.5s infinite' }} />
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          {[1,2,3].map(i => <div key={i} style={{ height: '36px', width: '96px', background: 'rgba(255,255,255,.08)', borderRadius: '100px', animation: 'pulse 1.5s infinite' }} />)}
         </div>
-        <div className="flex flex-col gap-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[1,2,3].map(i => (
-            <div key={i} className="card animate-pulse">
-              <div className="h-4 w-24 bg-white/10 rounded-full mb-4" />
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 bg-white/10 rounded-full" />
-                  <div className="h-3 w-16 bg-white/10 rounded-full" />
-                </div>
-                <div className="flex gap-2">
-                  <div className="w-14 h-14 bg-white/10 rounded-lg" />
-                  <div className="w-4 h-4 bg-white/10 rounded self-center" />
-                  <div className="w-14 h-14 bg-white/10 rounded-lg" />
-                </div>
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 bg-white/10 rounded-full" />
-                  <div className="h-3 w-16 bg-white/10 rounded-full" />
-                </div>
-              </div>
-            </div>
+            <div key={i} style={{ background: '#0c1810', border: '1px solid rgba(255,255,255,.06)', borderRadius: '14px', padding: '20px', height: '140px', animation: 'pulse 1.5s infinite' }} />
           ))}
         </div>
       </div>
@@ -138,71 +131,37 @@ export default function MatchesPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-black mb-5">⚽ משחקים</h1>
+    <div style={{ paddingBottom: '80px' }}>
+      <h1 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>משחקים</h1>
 
       {/* Stage tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-        <button
-          onClick={() => setActiveStage('today')}
-          className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            activeStage === 'today'
-              ? 'bg-green-500 text-black'
-              : 'bg-white/10 text-white/70 hover:bg-white/20'
-          }`}
-        >
-          📅 היום
-        </button>
-        <button
-          onClick={() => setActiveStage('all')}
-          className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            activeStage === 'all'
-              ? 'bg-green-500 text-black'
-              : 'bg-white/10 text-white/70 hover:bg-white/20'
-          }`}
-        >
-          🗓️ כל המשחקים
-        </button>
-        {stages.map(stage => (
-          <button
-            key={stage}
-            onClick={() => { setActiveStage(stage); setActiveGroup(null) }}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeStage === stage
-                ? 'bg-green-500 text-black'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
-            }`}
-          >
-            {STAGE_LABELS[stage] || stage}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '12px', scrollbarWidth: 'none' }}>
+        {tabBtn('today', '📅 היום', () => setActiveStage('today'))}
+        {tabBtn('all', '🗓 הכל', () => setActiveStage('all'))}
+        {stages.map(stage => tabBtn(stage, STAGE_LABELS[stage] || stage, () => { setActiveStage(stage); setActiveGroup(null) }))}
       </div>
 
-      {/* Group tabs (only for group stage) */}
+      {/* Group A–L selector */}
       {activeStage === 'group' && groups.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           {groups.map(g => (
-            <button
-              key={g}
-              onClick={() => setActiveGroup(g)}
-              className={`w-10 h-10 rounded-full text-sm font-bold transition-colors flex-shrink-0 ${
-                activeGroup === g
-                  ? 'bg-green-500 text-black'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-              }`}
-            >
-              {GROUP_LABELS[g] || g}
-            </button>
+            <button key={g} onClick={() => setActiveGroup(g)} style={{
+              width: '38px', height: '38px', borderRadius: '50%', border: 'none',
+              cursor: 'pointer', fontFamily: 'Heebo, sans-serif', fontSize: '13px', fontWeight: 700,
+              background: activeGroup === g ? '#1ede62' : 'rgba(255,255,255,.07)',
+              color:      activeGroup === g ? '#000'    : 'rgba(255,255,255,.55)',
+              transition: 'all .15s',
+            }}>{g}</button>
           ))}
         </div>
       )}
 
       {displayed.length === 0 ? (
-        <div className="text-center py-12 text-white/30">
+        <div style={{ textAlign: 'center', padding: '64px 0', color: 'rgba(255,255,255,.25)', fontSize: '14px' }}>
           {activeStage === 'today' ? 'אין משחקים היום' : activeStage === 'all' ? 'אין משחקים' : 'אין משחקים בשלב זה'}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {displayed.map(match => (
             <MatchCard key={match.id} match={match} onPredictionSaved={loadMatches} />
           ))}

@@ -2,11 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mondial-frontend",
-      "runtimeExecutable": "/opt/homebrew/bin/npm",
+      "name": "frontend",
+      "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "/Users/liornissan/mondial/frontend",
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

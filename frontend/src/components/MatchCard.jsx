@@ -1,125 +1,133 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
-import CountdownTimer from './CountdownTimer'
 
 function parseUtc(str) {
-  // ensure the string is treated as UTC (append Z if no tz offset)
   if (str && !str.endsWith('Z') && !str.includes('+')) return new Date(str + 'Z')
   return new Date(str)
 }
 
-function formatIsrael(str) {
+function fmtDate(str) {
   const d = parseUtc(str)
   return new Intl.DateTimeFormat('he-IL', {
     timeZone: 'Asia/Jerusalem',
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(d).replace(',', '')
 }
 
 const STAGE_LABELS = {
-  group: 'שלב הבתים',
-  round_of_32: 'שלב ה-32',
-  round_of_16: 'שמינית גמר',
-  quarter_final: 'רבע גמר',
-  semi_final: 'חצי גמר',
-  third_place: 'משחק שלישי',
-  final: 'גמר',
+  group: 'שלב הבתים', round_of_32: 'שלב ה-32',
+  round_of_16: 'שמינית גמר', quarter_final: 'רבע גמר',
+  semi_final: 'חצי גמר', third_place: 'משחק שלישי', final: 'גמר',
 }
 
-const STAGE_COLORS = {
-  group: 'bg-blue-500/20 text-blue-300',
-  round_of_32: 'bg-purple-500/20 text-purple-300',
-  round_of_16: 'bg-orange-500/20 text-orange-300',
-  quarter_final: 'bg-orange-500/20 text-orange-300',
-  semi_final: 'bg-yellow-500/20 text-yellow-300',
-  third_place: 'bg-yellow-500/20 text-yellow-300',
-  final: 'bg-green-500/20 text-green-300',
+const STAGE_PILL = {
+  group:         { bg: 'rgba(96,165,250,.12)',  text: '#60a5fa', border: 'rgba(96,165,250,.22)' },
+  round_of_32:   { bg: 'rgba(168,85,247,.12)',  text: '#c084fc', border: 'rgba(168,85,247,.22)' },
+  round_of_16:   { bg: 'rgba(251,146,60,.12)',  text: '#fb923c', border: 'rgba(251,146,60,.22)' },
+  quarter_final: { bg: 'rgba(251,146,60,.12)',  text: '#fb923c', border: 'rgba(251,146,60,.22)' },
+  semi_final:    { bg: 'rgba(245,200,66,.12)',  text: '#f5c842', border: 'rgba(245,200,66,.22)' },
+  third_place:   { bg: 'rgba(245,200,66,.12)',  text: '#f5c842', border: 'rgba(245,200,66,.22)' },
+  final:         { bg: 'rgba(30,222,98,.12)',   text: '#1ede62', border: 'rgba(30,222,98,.25)'  },
 }
 
-function PointsBadge({ points, stage }) {
-  const pts = {
-    group: { exact: 3, dir: 1 },
-    round_of_32: { exact: 5, dir: 3 },
-    round_of_16: { exact: 5, dir: 3 },
-    quarter_final: { exact: 5, dir: 3 },
-    semi_final: { exact: 10, dir: 5 },
-    third_place: { exact: 10, dir: 5 },
-    final: { exact: 10, dir: 5 },
-  }[stage] || { exact: 3, dir: 1 }
-
-  return (
-    <span className="text-xs text-white/40">
-      ✓ {pts.exact}נק | כיוון {pts.dir}נק
-    </span>
-  )
+const STAGE_POINTS = {
+  group:         { exact: 3,  dir: 1 },
+  round_of_32:   { exact: 5,  dir: 3 },
+  round_of_16:   { exact: 5,  dir: 3 },
+  quarter_final: { exact: 5,  dir: 3 },
+  semi_final:    { exact: 10, dir: 5 },
+  third_place:   { exact: 10, dir: 5 },
+  final:         { exact: 10, dir: 5 },
 }
 
-function ScoreBox({ value, onChange, disabled, spinnerSide }) {
-  const num = value === '' ? '' : parseInt(value) || 0
+function ScoreBox({ value, onChange, side }) {
+  const inc = () => { const n = parseInt(value) || 0; onChange(String(Math.min(99, n + 1))) }
+  const dec = () => { const n = parseInt(value) || 0; onChange(String(Math.max(0, n - 1))) }
 
-  function increment() {
-    const n = value === '' ? 0 : Math.min(99, parseInt(value) || 0)
-    onChange(String(n + 1 > 99 ? 99 : n + 1))
-  }
-  function decrement() {
-    const n = value === '' ? 0 : Math.max(0, parseInt(value) || 0)
-    onChange(String(n - 1 < 0 ? 0 : n - 1))
-  }
-
-  const spinnerButtons = !disabled && (
-    <div className="flex flex-col h-full border-white/15" style={{ borderLeftWidth: spinnerSide === 'right' ? 1 : 0, borderRightWidth: spinnerSide === 'left' ? 1 : 0, borderStyle: 'solid' }}>
-      <button onMouseDown={e => { e.preventDefault(); increment() }} className="flex-1 flex items-center justify-center px-2 text-white/60 hover:text-white hover:bg-white/10 transition-colors text-[10px]">▲</button>
-      <button onMouseDown={e => { e.preventDefault(); decrement() }} className="flex-1 flex items-center justify-center px-2 text-white/60 hover:text-white hover:bg-white/10 transition-colors text-[10px] border-t border-white/10">▼</button>
+  const spinners = (
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%',
+      borderRight: side === 'r' ? '1px solid rgba(255,255,255,.1)' : 'none',
+      borderLeft:  side === 'l' ? '1px solid rgba(255,255,255,.1)' : 'none',
+    }}>
+      {[['▲', inc], ['▼', dec]].map(([sym, fn], i) => (
+        <button key={sym} type="button" onMouseDown={e => { e.preventDefault(); fn() }}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 9px', background: 'transparent', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,.28)', fontSize: '9px', transition: 'color .1s',
+            borderTop: i === 1 ? '1px solid rgba(255,255,255,.07)' : 'none',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,.8)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,.28)'}
+        >{sym}</button>
+      ))}
     </div>
   )
 
   return (
-    <div className="flex items-stretch w-16 h-14 sm:w-20 sm:h-16 bg-black/40 border-2 border-white/30 rounded-lg overflow-hidden focus-within:border-green-400">
-      {spinnerSide === 'left' && spinnerButtons}
-      <input
-        type="number"
-        min="0"
-        max="99"
-        step="1"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        disabled={disabled}
-        className="flex-1 min-w-0 text-center text-3xl sm:text-4xl font-black bg-transparent text-white focus:outline-none"
+    <div style={{
+      display: 'flex', alignItems: 'stretch', width: '66px', height: '60px',
+      background: 'rgba(0,0,0,.45)', border: '1.5px solid rgba(255,255,255,.14)',
+      borderRadius: '10px', overflow: 'hidden',
+    }}>
+      {side === 'r' && spinners}
+      <input type="number" min="0" max="99" value={value} onChange={e => onChange(e.target.value)}
         placeholder="0"
-        style={{ direction: 'ltr' }}
+        style={{
+          flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
+          textAlign: 'center', fontSize: '36px', fontWeight: 800, color: '#fff',
+          fontFamily: 'Heebo, sans-serif', direction: 'ltr', fontVariantNumeric: 'tabular-nums',
+        }}
       />
-      {spinnerSide === 'right' && spinnerButtons}
+      {side === 'l' && spinners}
     </div>
   )
 }
 
 export default function MatchCard({ match, onPredictionSaved }) {
-  const [homeInput, setHomeInput] = useState(
-    match.my_prediction != null ? String(match.my_prediction.home_score) : ''
-  )
-  const [awayInput, setAwayInput] = useState(
-    match.my_prediction != null ? String(match.my_prediction.away_score) : ''
-  )
-  const [saving, setSaving] = useState(false)
-  const [closed, setClosed] = useState(false)
+  const [home, setHome]           = useState(match.my_prediction != null ? String(match.my_prediction.home_score) : '')
+  const [away, setAway]           = useState(match.my_prediction != null ? String(match.my_prediction.away_score) : '')
+  const [saving, setSaving]       = useState(false)
   const [groupPreds, setGroupPreds] = useState(null)
   const [loadingGroup, setLoadingGroup] = useState(false)
-
-  const isClosed = closed || match.status === 'finished' || (() => {
+  const [countdown, setCountdown] = useState('')
+  const [timeLocked, setTimeLocked] = useState(() => {
     const cutoff = parseUtc(match.scheduled_at).getTime() - 5 * 60 * 1000
     return Date.now() >= cutoff
-  })()
+  })
 
-  // Group predictions are revealed only after the match has actually kicked off
-  const isKickedOff = match.status === 'finished' ||
-    Date.now() >= parseUtc(match.scheduled_at).getTime()
+  const fin    = match.status === 'finished'
+  const live   = match.status === 'live'
+  const locked = !fin && !live && timeLocked
+  const up     = !fin && !live && !locked
+  const pred   = match.my_prediction
+  const pts    = STAGE_POINTS[match.stage] || { exact: 3, dir: 1 }
 
-  const handleExpired = useCallback(() => setClosed(true), [])
+  // Reveal group predictions after kickoff
+  const isKickedOff = fin || live || Date.now() >= parseUtc(match.scheduled_at).getTime()
+
+  useEffect(() => {
+    if (!up) return
+    function calc() {
+      const diff = parseUtc(match.scheduled_at) - Date.now()
+      if (diff <= 0) { setTimeLocked(true); return }
+      const d = Math.floor(diff / 86400000)
+      const h = Math.floor((diff % 86400000) / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      const s = Math.floor((diff % 60000) / 1000)
+      setCountdown(d > 0
+        ? `${d}י ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+        : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+    }
+    calc()
+    const t = setInterval(calc, 1000)
+    return () => clearInterval(t)
+  }, [up, match.scheduled_at])
+
+  const handleExpired = useCallback(() => setTimeLocked(true), [])
 
   async function toggleGroupPreds() {
     if (groupPreds) { setGroupPreds(null); return }
@@ -135,12 +143,9 @@ export default function MatchCard({ match, onPredictionSaved }) {
   }
 
   async function handleSave() {
-    const h = parseInt(homeInput)
-    const a = parseInt(awayInput)
-    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) {
-      toast.error('הזן תוצאה תקינה')
-      return
-    }
+    const h = parseInt(home)
+    const a = parseInt(away)
+    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) { toast.error('הזן תוצאה תקינה'); return }
     setSaving(true)
     try {
       await api.post(`/api/predictions/${match.id}`, { home_score: h, away_score: a })
@@ -153,179 +158,214 @@ export default function MatchCard({ match, onPredictionSaved }) {
     }
   }
 
-  const hasPrediction = match.my_prediction != null
-  const isFinished = match.status === 'finished'
+  const topColor = live ? '#f04a58' : fin ? '#1ede62' : locked ? '#f5c842' : '#60a5fa'
+  const sp = STAGE_PILL[match.stage] || { bg: 'rgba(255,255,255,.08)', text: 'rgba(255,255,255,.5)', border: 'rgba(255,255,255,.12)' }
 
-  function getResultColor(pred, actual) {
-    if (pred === null || actual === null) return ''
-    if (pred.home_score === actual.home && pred.away_score === actual.away) return 'text-green-400'
-    const predDir = Math.sign(pred.home_score - pred.away_score)
-    const actualDir = Math.sign(actual.home - actual.away)
-    if (predDir === actualDir) return 'text-yellow-400'
-    return 'text-red-400'
+  function resultColor() {
+    if (!fin || !pred) return null
+    if (pred.home_score === match.home_score && pred.away_score === match.away_score) return 'green'
+    if (Math.sign(pred.home_score - pred.away_score) === Math.sign(match.home_score - match.away_score)) return 'yellow'
+    return 'red'
+  }
+  const rc = resultColor()
+  const rcP = {
+    green:  { bg: 'rgba(30,222,98,.12)',  text: '#1ede62', border: 'rgba(30,222,98,.25)'  },
+    yellow: { bg: 'rgba(245,200,66,.12)', text: '#f5c842', border: 'rgba(245,200,66,.25)' },
+    red:    { bg: 'rgba(240,74,90,.12)',  text: '#f04a58', border: 'rgba(240,74,90,.22)'  },
   }
 
-  const resultColor = isFinished && hasPrediction
-    ? getResultColor(match.my_prediction, { home: match.home_score, away: match.away_score })
-    : ''
-
   return (
-    <div className={`card transition-all ${isFinished ? 'opacity-80' : ''}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STAGE_COLORS[match.stage] || 'bg-white/10 text-white/60'}`}>
-            {STAGE_LABELS[match.stage] || match.stage}
-            {match.group_name && ` · בית ${match.group_name}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isClosed && !isFinished && (
-            <CountdownTimer scheduledAt={match.scheduled_at} onExpired={handleExpired} />
-          )}
-          {isClosed && !isFinished && (
-            <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full">
-              🔒 נעול
+    <div style={{
+      background: '#0c1810', border: '1px solid rgba(255,255,255,.06)', borderRadius: '14px',
+      boxShadow: '0 1px 0 rgba(255,255,255,.04) inset, 0 4px 24px rgba(0,0,0,.45)',
+      overflow: 'hidden', opacity: locked ? 0.88 : 1,
+    }}>
+      <div style={{ height: '2px', background: `linear-gradient(90deg,${topColor} 0%,transparent 80%)` }} />
+
+      <div style={{ padding: '11px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <span style={{
+          fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px',
+          background: sp.bg, color: sp.text, border: `1px solid ${sp.border}`, whiteSpace: 'nowrap',
+        }}>
+          {STAGE_LABELS[match.stage] || match.stage}
+          {match.group_name && ` · בית ${match.group_name}`}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+          {live && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600,
+              background: 'rgba(240,74,90,.12)', color: '#f04a58', border: '1px solid rgba(240,74,90,.22)',
+              borderRadius: '100px', padding: '3px 9px',
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f04a58', animation: 'livepulse 1.3s infinite' }} />
+              לייב
             </span>
           )}
-          <span className="text-xs text-white/40">
-            {formatIsrael(match.scheduled_at)}
-          </span>
+          {fin && (
+            <span style={{
+              fontSize: '11px', fontWeight: 600, padding: '3px 9px', borderRadius: '100px',
+              background: 'rgba(30,222,98,.10)', color: '#1ede62', border: '1px solid rgba(30,222,98,.2)',
+            }}>✓ הסתיים</span>
+          )}
+          {locked && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600,
+              background: 'rgba(245,200,66,.1)', color: '#f5c842', border: '1px solid rgba(245,200,66,.2)',
+              borderRadius: '100px', padding: '3px 9px',
+            }}>🔒 נעול · {fmtDate(match.scheduled_at)}</span>
+          )}
+          {up && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>
+                {fmtDate(match.scheduled_at)}
+              </span>
+              {countdown && (
+                <span style={{
+                  fontSize: '11px', fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                  background: 'rgba(96,165,250,.1)', color: '#60a5fa',
+                  border: '1px solid rgba(96,165,250,.2)', borderRadius: '100px',
+                  padding: '2px 8px',
+                }}>⏱ {countdown}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        {/* Home team */}
-        <div className="flex-1 text-center">
-          <div className="text-3xl mb-1">{match.home_team?.flag || '🏳'}</div>
-          <div className="text-sm font-medium leading-tight">{match.home_team?.name || 'טרם נקבע'}</div>
+      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '46px', lineHeight: 1, marginBottom: '7px' }}>{match.home_team?.flag || '🏳'}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{match.home_team?.name || 'טרם נקבע'}</div>
         </div>
 
-        {/* Score area */}
-        <div className="flex flex-col items-center gap-2 min-w-[140px]">
-          {isFinished ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '9px', minWidth: '152px' }}>
+          {(fin || live) ? (
             <>
-              <div className="flex items-center gap-2 bg-black/60 rounded-xl px-5 py-2">
-                <span className="text-4xl font-black text-white">{match.home_score}</span>
-                <span className="text-white/40 text-2xl font-bold">-</span>
-                <span className="text-4xl font-black text-white">{match.away_score}</span>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                background: 'rgba(0,0,0,.5)', borderRadius: '12px', padding: '8px 18px',
+                border: live ? '1px solid rgba(240,74,90,.2)' : 'none',
+              }}>
+                <span style={{ fontSize: '44px', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{match.home_score}</span>
+                <span style={{ fontSize: '22px', color: live ? '#f04a58' : 'rgba(255,255,255,.2)', fontWeight: 300 }}>–</span>
+                <span style={{ fontSize: '44px', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{match.away_score}</span>
               </div>
-              {hasPrediction && (
-                <div className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  resultColor === 'text-green-400' ? 'bg-green-500/20 text-green-400' :
-                  resultColor === 'text-yellow-400' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {resultColor === 'text-green-400' ? '🎯 בול! ' : resultColor === 'text-yellow-400' ? '↗ כיוון ' : '✗ '}
-                  {match.my_prediction.home_score}–{match.my_prediction.away_score}
-                  {match.my_prediction.points != null && ` +${match.my_prediction.points}נק`}
+              {pred && fin && rc && (
+                <span style={{
+                  fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '100px',
+                  background: rcP[rc].bg, color: rcP[rc].text, border: `1px solid ${rcP[rc].border}`,
+                }}>
+                  {rc === 'green' ? '🎯 בול! ' : rc === 'yellow' ? '↗ כיוון ' : '✗ '}
+                  {pred.home_score}–{pred.away_score}
+                  {pred.points != null ? ` · +${pred.points}נק` : ''}
+                </span>
+              )}
+              {pred && live && (
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>
+                  ניחושך: {pred.home_score}–{pred.away_score}
                 </div>
               )}
             </>
+          ) : locked ? (
+            pred ? (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: 'rgba(245,200,66,.07)', borderRadius: '12px', padding: '8px 18px',
+                  border: '1px solid rgba(245,200,66,.18)',
+                }}>
+                  <span style={{ fontSize: '40px', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: '#f5c842' }}>{pred.home_score}</span>
+                  <span style={{ fontSize: '20px', color: 'rgba(245,200,66,.4)', fontWeight: 300 }}>–</span>
+                  <span style={{ fontSize: '40px', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: '#f5c842' }}>{pred.away_score}</span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(245,200,66,.6)', marginTop: '7px' }}>🔒 הניחוש נעול</div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  background: 'rgba(240,74,90,.07)', border: '1px solid rgba(240,74,90,.18)',
+                  borderRadius: '12px', padding: '12px 20px',
+                }}>
+                  <div style={{ fontSize: '28px', marginBottom: '4px' }}>😬</div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#f04a58' }}>לא הוגש ניחוש</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.3)', marginTop: '3px' }}>הזמן עבר</div>
+                </div>
+              </div>
+            )
           ) : (
-            <div className="flex items-center gap-2">
-              <ScoreBox value={homeInput} onChange={setHomeInput} disabled={isClosed} spinnerSide="right" />
-              <span className="text-white/40 text-2xl font-bold">-</span>
-              <ScoreBox value={awayInput} onChange={setAwayInput} disabled={isClosed} spinnerSide="left" />
-            </div>
-          )}
-
-          {!isFinished && !isClosed && (
-            <button
-              onClick={handleSave}
-              disabled={saving || homeInput === '' || awayInput === ''}
-              className="btn-primary text-sm py-1.5 px-4 w-full"
-            >
-              {saving ? '...' : hasPrediction ? '✏️ עדכן' : '💾 שמור'}
-            </button>
-          )}
-
-          {isClosed && !isFinished && hasPrediction && (
-            <div className="text-xs text-white/50 text-center">
-              ניחושך: {match.my_prediction.home_score}-{match.my_prediction.away_score}
-            </div>
-          )}
-
-          {isClosed && !isFinished && !hasPrediction && (
-            <div className="text-xs text-red-400/70 text-center">לא הוגש ניחוש</div>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ScoreBox value={home} onChange={setHome} side="r" />
+                <span style={{ fontSize: '20px', color: 'rgba(255,255,255,.18)', fontWeight: 300 }}>–</span>
+                <ScoreBox value={away} onChange={setAway} side="l" />
+              </div>
+              <button onClick={handleSave} disabled={saving || home === '' || away === ''} style={{
+                background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
+                fontWeight: 700, fontSize: '13px', padding: '8px 0', width: '100%',
+                borderRadius: '9px', border: 'none', cursor: saving || home === '' || away === '' ? 'default' : 'pointer',
+                boxShadow: '0 2px 14px rgba(30,222,98,.22)',
+                opacity: home === '' || away === '' ? 0.4 : 1, transition: 'opacity .15s',
+              }}>
+                {saving ? '...' : pred ? '✏️ עדכן ניחוש' : '💾 שמור ניחוש'}
+              </button>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.28)' }}>
+                מדויק {pts.exact}נק · כיוון {pts.dir}נק
+              </span>
+            </>
           )}
         </div>
 
-        {/* Away team */}
-        <div className="flex-1 text-center">
-          <div className="text-3xl mb-1">{match.away_team?.flag || '🏳'}</div>
-          <div className="text-sm font-medium leading-tight">{match.away_team?.name || 'טרם נקבע'}</div>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '46px', lineHeight: 1, marginBottom: '7px' }}>{match.away_team?.flag || '🏳'}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{match.away_team?.name || 'טרם נקבע'}</div>
         </div>
       </div>
 
-      {!isFinished && !isClosed && (
-        <div className="mt-3 text-center">
-          <PointsBadge stage={match.stage} />
-        </div>
-      )}
-
-      {/* Status badge */}
-      <div className="mt-3 flex justify-center">
-        {isFinished ? (
-          <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-1.5 text-sm text-green-400">
-            ✅ הסתיים <strong className="text-white text-base tracking-wide">{match.home_score} – {match.away_score}</strong>
-          </div>
-        ) : isKickedOff ? (
-          <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-1.5 text-sm text-red-300">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            לייב
-            {match.home_score != null && match.away_score != null && (
-              <>
-                <span className="w-px h-3.5 bg-red-500/30" />
-                <strong className="text-white text-base tracking-wide">{match.home_score} – {match.away_score}</strong>
-              </>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,.05)', padding: '9px 16px' }}>
+        {isKickedOff ? (
+          <>
+            <button onClick={toggleGroupPreds} disabled={loadingGroup} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.3)',
+              fontSize: '12px', fontFamily: 'Heebo, sans-serif', width: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', transition: 'color .15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,.6)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,.3)'}
+            >
+              <span>👥</span>
+              <span>{loadingGroup ? '...' : groupPreds ? 'הסתר ניחושי הקבוצה' : 'ניחושי הקבוצה'}</span>
+              <span style={{ fontSize: '10px' }}>{groupPreds ? '▲' : '▼'}</span>
+            </button>
+            {groupPreds && (
+              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                {groupPreds.map(p => (
+                  <div key={p.user_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 2px' }}>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.55)' }}>{p.user_name}</span>
+                    {p.home_score != null ? (
+                      <span style={{
+                        fontSize: '12px', fontWeight: 600,
+                        color: p.points != null
+                          ? p.points >= (STAGE_POINTS[match.stage]?.exact || 3) ? '#1ede62'
+                          : p.points > 0 ? '#f5c842' : 'rgba(255,255,255,.5)'
+                          : 'rgba(255,255,255,.6)',
+                      }}>
+                        {p.home_score}–{p.away_score}
+                        {p.points != null && <span style={{ color: 'rgba(255,255,255,.3)', marginRight: '4px' }}> ({p.points}נק)</span>}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: 'rgba(240,74,90,.5)' }}>לא הוגש</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
+          </>
         ) : (
-          <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/40">
-            ⏳ טרם החל
+          <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,.18)' }}>
+            👥 ניחושי הקבוצה ייחשפו בתחילת המשחק
           </div>
         )}
       </div>
-
-      {!isKickedOff && !isFinished && (
-        <div className="mt-3 border-t border-white/10 pt-2 text-center">
-          <span className="text-xs text-white/25">👥 ניחושי הקבוצה ייחשפו בתחילת המשחק</span>
-        </div>
-      )}
-
-      {isKickedOff && (
-        <div className="mt-3 border-t border-white/10 pt-2">
-          <button
-            onClick={toggleGroupPreds}
-            disabled={loadingGroup}
-            className="text-xs text-white/40 hover:text-white/70 transition-colors w-full text-center"
-          >
-            {loadingGroup ? '...' : groupPreds ? '▲ הסתר ניחושי הקבוצה' : '👥 ניחושי הקבוצה'}
-          </button>
-          {groupPreds && (
-            <div className="mt-2 space-y-1">
-              {groupPreds.map(p => (
-                <div key={p.user_name} className="flex items-center justify-between text-xs px-1">
-                  <span className="text-white/60">{p.user_name}</span>
-                  {p.home_score != null
-                    ? <span className={`font-medium ${
-                        p.points != null
-                          ? p.points >= (['semi_final', 'third_place', 'final'].includes(match.stage) ? 10 : match.stage === 'group' ? 3 : 5)
-                            ? 'text-green-400'
-                            : p.points > 0 ? 'text-yellow-400' : 'text-white/50'
-                          : 'text-white/70'
-                      }`}>
-                        {p.home_score}–{p.away_score}
-                        {p.points != null && <span className="text-white/40 mr-1"> ({p.points}נק)</span>}
-                      </span>
-                    : <span className="text-red-400/50">לא הוגש</span>
-                  }
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
