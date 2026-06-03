@@ -11,7 +11,7 @@ from utils import tournament_started
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
 
-def _build_leaderboard(users: list[models.User], reveal_special: bool = True) -> list[schemas.UserOut]:
+def _build_leaderboard(users: list[models.User], current_user_id: int, reveal_others: bool = True) -> list[schemas.UserOut]:
     result = []
     for user in users:
         real_preds = [p for p in user.predictions if not p.match.is_test]
@@ -30,6 +30,7 @@ def _build_leaderboard(users: list[models.User], reveal_special: bool = True) ->
             elif (p.home_score - p.away_score) * (m.home_score - m.away_score) > 0 or \
                  (p.home_score == p.away_score and m.home_score == m.away_score):
                 direction_count += 1
+        show_special = reveal_others or user.id == current_user_id
         result.append(
             schemas.UserOut(
                 id=user.id,
@@ -39,8 +40,8 @@ def _build_leaderboard(users: list[models.User], reveal_special: bool = True) ->
                 prediction_count=len(real_preds),
                 exact_count=exact_count,
                 direction_count=direction_count,
-                winner_pick=winner_pick if reveal_special else None,
-                top_scorer_pick=top_scorer_pick if reveal_special else None,
+                winner_pick=winner_pick if show_special else None,
+                top_scorer_pick=top_scorer_pick if show_special else None,
             )
         )
     result.sort(key=lambda u: (-u.total_points, u.name))
@@ -50,7 +51,7 @@ def _build_leaderboard(users: list[models.User], reveal_special: bool = True) ->
 @router.get("", response_model=list[schemas.UserOut])
 def leaderboard(
     group_id: Optional[int] = None,
-    _: models.User = Depends(auth_utils.get_current_user),
+    current_user: models.User = Depends(auth_utils.get_current_user),
     db: Session = Depends(get_db),
 ):
     eager = [
@@ -67,7 +68,7 @@ def leaderboard(
     else:
         users = db.query(models.User).options(*eager).all()
 
-    return _build_leaderboard(users, reveal_special=tournament_started())
+    return _build_leaderboard(users, current_user_id=current_user.id, reveal_others=tournament_started())
 
 
 @router.get("/groups", response_model=list[schemas.GroupOut])

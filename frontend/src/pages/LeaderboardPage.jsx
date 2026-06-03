@@ -2,6 +2,25 @@ import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
+import { WC_PLAYERS } from '../data/worldcup.js'
+
+const PLAYER_MAP = Object.fromEntries(WC_PLAYERS.map(p => [p.name, p]))
+
+function PlayerAvatar({ name }) {
+  const [failed, setFailed] = useState(false)
+  if (!name) return <span style={{ fontSize: '16px' }}>—</span>
+  const p = PLAYER_MAP[name]
+  const src = p?.localImg || (p?.apiId ? `https://media.api-sports.io/football/players/${p.apiId}.png` : null)
+  if (!src || failed) {
+    return <span style={{ fontSize: '13px', color: 'rgba(255,255,255,.55)', fontWeight: 500 }}>{p?.flag || '⚽'}</span>
+  }
+  return (
+    <img src={src} alt={name} title={name}
+      onError={() => setFailed(true)}
+      style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+    />
+  )
+}
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
@@ -68,7 +87,7 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
           <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🎯</div>
           <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>↗</div>
           <div style={{ width: '22px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🏆</div>
-          <div style={{ width: '90px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>⚽</div>
+          <div style={{ width: '36px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>⚽</div>
           <div style={{ width: '40px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>נק׳</div>
           {isOwner && <div style={{ width: '24px' }} />}
         </div>
@@ -141,13 +160,9 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
               <div style={{ width: '22px', textAlign: 'center', fontSize: '18px', flexShrink: 0 }}>
                 {user.winner_pick ? (teamFlags[user.winner_pick] || user.winner_pick) : '—'}
               </div>
-              {/* Top scorer - full name */}
-              <div style={{ width: '90px', flexShrink: 0, overflow: 'hidden' }}>
-                <span style={{
-                  fontSize: '11px', color: 'rgba(255,255,255,.65)', fontWeight: 500,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  display: 'block', textAlign: 'center',
-                }}>{user.top_scorer_pick || '—'}</span>
+              {/* Top scorer - avatar */}
+              <div style={{ width: '36px', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <PlayerAvatar name={user.top_scorer_pick} />
               </div>
               {/* Points */}
               <div style={{

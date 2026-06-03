@@ -20,7 +20,7 @@ const cardSt = (locked) => ({
 
 function PlayerPhoto({ player, size = 42 }) {
   const [failed, setFailed] = useState(false)
-  const src = player.apiId ? `https://media.api-sports.io/football/players/${player.apiId}.png` : null
+  const src = player.localImg || (player.apiId ? `https://media.api-sports.io/football/players/${player.apiId}.png` : null)
   if (!src || failed) {
     return (
       <div style={{

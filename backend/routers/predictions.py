@@ -70,7 +70,8 @@ def group_predictions(
 
     # Reveal only after the match has actually kicked off (not just locked)
     kickoff = match.scheduled_at.replace(tzinfo=timezone.utc)
-    if datetime.now(timezone.utc) < kickoff:
+    already_started = match.status in ("live", "finished")
+    if not already_started and datetime.now(timezone.utc) < kickoff:
         raise HTTPException(status_code=403, detail="ניחושים יוצגו לאחר תחילת המשחק")
 
     # Collect all groups the current user belongs to

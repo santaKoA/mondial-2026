@@ -32,6 +32,8 @@ const STAGE_PILL = {
   final:         { bg: 'rgba(30,222,98,.12)',   text: '#1ede62', border: 'rgba(30,222,98,.25)'  },
 }
 
+const CUTOFF_MINUTES = 5
+
 const STAGE_POINTS = {
   group:         { exact: 3,  dir: 1 },
   round_of_32:   { exact: 5,  dir: 3 },
@@ -95,7 +97,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
   const [loadingGroup, setLoadingGroup] = useState(false)
   const [countdown, setCountdown] = useState('')
   const [timeLocked, setTimeLocked] = useState(() => {
-    const cutoff = parseUtc(match.scheduled_at).getTime() - 5 * 60 * 1000
+    const cutoff = parseUtc(match.scheduled_at).getTime() - CUTOFF_MINUTES * 60 * 1000
     return Date.now() >= cutoff
   })
 
@@ -112,7 +114,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
   useEffect(() => {
     if (!up) return
     function calc() {
-      const diff = parseUtc(match.scheduled_at) - Date.now()
+      const diff = parseUtc(match.scheduled_at) - Date.now() - CUTOFF_MINUTES * 60 * 1000
       if (diff <= 0) { setTimeLocked(true); return }
       const d = Math.floor(diff / 86400000)
       const h = Math.floor((diff % 86400000) / 3600000)
