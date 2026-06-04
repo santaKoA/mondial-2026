@@ -46,7 +46,8 @@ export default function Header() {
     navigate('/join')
   }
 
-  const matchesHref = new Date() >= new Date('2026-06-11') ? '/?tab=today' : '/?tab=all'
+  const israelDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date())
+  const matchesHref = israelDate >= '2026-06-11' ? '/?tab=today' : '/?tab=all'
 
   const links = [
     { to: matchesHref, label: 'משחקים', Icon: IcBall, end: true },

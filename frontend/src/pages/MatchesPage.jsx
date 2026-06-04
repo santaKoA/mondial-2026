@@ -32,12 +32,17 @@ function todayIsrael() {
   return israelDateStr(new Date())
 }
 
+function isTournamentDay() {
+  const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date())
+  return d >= '2026-06-11'
+}
+
 export default function MatchesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTabRef = useRef(searchParams.get('tab'))
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState(initialTabRef.current || 'today')
+  const [activeStage, setActiveStage] = useState(initialTabRef.current || (isTournamentDay() ? 'today' : 'all'))
   const [activeGroup, setActiveGroup] = useState(null)
   const initializedRef = useRef(false)
 
@@ -48,19 +53,6 @@ export default function MatchesPage() {
       setMatches(sorted)
       if (!initializedRef.current) {
         initializedRef.current = true
-        if (!initialTabRef.current) {
-          const today = todayIsrael()
-          const hasTodayMatches = sorted.some(m => israelDateStr(toUtcDate(m.scheduled_at)) === today)
-          if (!hasTodayMatches) {
-            const firstUpcoming = sorted.find(m => m.status === 'upcoming')
-            if (firstUpcoming) {
-              setActiveStage(firstUpcoming.stage)
-              if (firstUpcoming.stage === 'group') setActiveGroup(firstUpcoming.group_name)
-            } else {
-              setActiveStage('group')
-            }
-          }
-        }
       }
     } catch {
       // ignore

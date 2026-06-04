@@ -9,7 +9,7 @@ import AdminPage from './pages/AdminPage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-green-400 text-2xl">⚽ טוען...</div></div>
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050c07' }}><div style={{ color: '#1ede62', fontSize: '1.5rem' }}>⚽ טוען...</div></div>
   if (!user) return <Navigate to="/join" replace />
   return children
 }
@@ -26,8 +26,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-pitch-900">
-        <div className="text-green-400 text-3xl animate-pulse">⚽</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050c07' }}>
+        <div style={{ fontSize: '2rem', animation: 'pulse 1.5s infinite' }}>⚽</div>
       </div>
     )
   }

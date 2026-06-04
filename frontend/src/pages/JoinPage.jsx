@@ -20,7 +20,8 @@ export default function JoinPage() {
   const navigate = useNavigate()
 
   function loginDest() {
-    return new Date() >= new Date('2026-06-11') ? '/?tab=today' : '/?tab=all'
+    const israelDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date())
+    return israelDate >= '2026-06-11' ? '/?tab=today' : '/?tab=all'
   }
 
   useEffect(() => {

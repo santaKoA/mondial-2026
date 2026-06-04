@@ -2,6 +2,117 @@ import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
 
+const H24 = 24 * 3600 * 1000
+const H1  =      3600 * 1000
+
+function StopwatchCountdown({ diffMs }) {
+  let color, percent, top, label
+
+  if (diffMs > H24) {
+    const d = Math.floor(diffMs / 86400000)
+    color = '#1ede62'; percent = 1
+    top = `${d}`; label = d === 1 ? 'יום' : 'ימים'
+  } else if (diffMs > H1) {
+    const h = Math.floor(diffMs / 3600000)
+    const m = Math.floor((diffMs % 3600000) / 60000)
+    color = '#f5c842'; percent = diffMs / H24
+    top = `${h}:${String(m).padStart(2, '0')}`; label = 'שע׳:דק׳'
+  } else {
+    const m = Math.floor(diffMs / 60000)
+    const s = Math.floor((diffMs % 60000) / 1000)
+    color = '#f04a58'; percent = diffMs / H1
+    top = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; label = 'דק׳:שנ׳'
+  }
+
+  const W = 56, H = 66
+  const CX = W / 2, CY = H / 2 + 3
+  const R_BEZEL = 22, R_FACE = 18
+
+  function pt(deg, r) {
+    const rad = (deg - 90) * Math.PI / 180
+    return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]
+  }
+
+  function wedge(pct) {
+    if (pct <= 0) return ''
+    if (pct >= 1) return `M ${CX} ${CY - R_FACE} A ${R_FACE} ${R_FACE} 0 1 1 ${CX - 0.001} ${CY - R_FACE} Z`
+    const deg = pct * 360
+    const [x1, y1] = pt(0, R_FACE)
+    const [x2, y2] = pt(deg, R_FACE)
+    return `M ${CX} ${CY} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${R_FACE} ${R_FACE} 0 ${deg > 180 ? 1 : 0} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`
+  }
+
+  const ticks = Array.from({ length: 12 }, (_, i) => {
+    const [x1, y1] = pt(i * 30, R_FACE - 3)
+    const [x2, y2] = pt(i * 30, R_FACE)
+    return <line key={i} x1={x1.toFixed(2)} y1={y1.toFixed(2)} x2={x2.toFixed(2)} y2={y2.toFixed(2)}
+      stroke="rgba(255,255,255,.22)" strokeWidth="1.2" strokeLinecap="round" />
+  })
+
+  const fontSize = diffMs > H24 ? 17 : 11
+  const textTop = CY - Math.round((fontSize + 7) / 2)
+
+  return (
+    <div style={{ position: 'relative', width: W, height: H, flexShrink: 0 }}>
+      <svg width={W} height={H} style={{ position: 'absolute', top: 0, left: 0 }}>
+        {/* Crown stem */}
+        <rect x={CX - 4} y={CY - R_BEZEL - 8} width={8} height={7} rx={2}
+          fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.2)" strokeWidth={0.6} />
+        {/* Crown top button */}
+        <rect x={CX - 5.5} y={CY - R_BEZEL - 12} width={11} height={5} rx={2.5}
+          fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.15)" strokeWidth={0.6} />
+
+        {/* Outer bezel */}
+        <circle cx={CX} cy={CY} r={R_BEZEL}
+          fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.15)" strokeWidth={1.2} />
+        {/* Inner bezel highlight */}
+        <circle cx={CX} cy={CY} r={R_BEZEL - 2}
+          fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={1} />
+
+        {/* Face background */}
+        <circle cx={CX} cy={CY} r={R_FACE + 1}
+          fill="rgba(0,0,0,.6)" />
+
+        {/* Colored wedge — remaining time sweep */}
+        <path d={wedge(percent)} fill={color} opacity={0.18}
+          style={{ transition: 'fill 0.5s' }} />
+
+        {/* Tick marks */}
+        {ticks}
+
+        {/* Face border ring */}
+        <circle cx={CX} cy={CY} r={R_FACE}
+          fill="none" stroke={color} strokeWidth={1.8} opacity={0.5}
+          style={{ transition: 'stroke 0.5s' }} />
+
+        {/* Center pin */}
+        <circle cx={CX} cy={CY} r={2.2} fill={color} opacity={0.75}
+          style={{ transition: 'fill 0.5s' }} />
+      </svg>
+
+      {/* Number + label overlay */}
+      <div style={{
+        position: 'absolute', top: textTop, left: 0, right: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px',
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          fontSize: diffMs > H24 ? '17px' : '11px',
+          fontWeight: 900, color, fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1, letterSpacing: diffMs > H24 ? '0' : '-0.8px',
+          fontFamily: 'Heebo, sans-serif',
+          transition: 'color 0.5s',
+        }}>{top}</span>
+        <span style={{
+          fontSize: '6.5px', fontWeight: 700, color, opacity: 0.65,
+          fontFamily: 'Heebo, sans-serif',
+          transition: 'color 0.5s',
+        }}>{label}</span>
+      </div>
+    </div>
+  )
+}
+
 function parseUtc(str) {
   if (str && !str.endsWith('Z') && !str.includes('+')) return new Date(str + 'Z')
   return new Date(str)
@@ -95,7 +206,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
   const [saving, setSaving]       = useState(false)
   const [groupPreds, setGroupPreds] = useState(null)
   const [loadingGroup, setLoadingGroup] = useState(false)
-  const [countdown, setCountdown] = useState('')
+  const [diffMs, setDiffMs] = useState(-1)
   const [timeLocked, setTimeLocked] = useState(() => {
     const cutoff = parseUtc(match.scheduled_at).getTime() - CUTOFF_MINUTES * 60 * 1000
     return Date.now() >= cutoff
@@ -115,21 +226,13 @@ export default function MatchCard({ match, onPredictionSaved }) {
     if (!up) return
     function calc() {
       const diff = parseUtc(match.scheduled_at) - Date.now() - CUTOFF_MINUTES * 60 * 1000
-      if (diff <= 0) { setTimeLocked(true); return }
-      const d = Math.floor(diff / 86400000)
-      const h = Math.floor((diff % 86400000) / 3600000)
-      const m = Math.floor((diff % 3600000) / 60000)
-      const s = Math.floor((diff % 60000) / 1000)
-      setCountdown(d > 0
-        ? `${d}י ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-        : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+      if (diff <= 0) { setTimeLocked(true); setDiffMs(0); return }
+      setDiffMs(diff)
     }
     calc()
     const t = setInterval(calc, 1000)
     return () => clearInterval(t)
   }, [up, match.scheduled_at])
-
-  const handleExpired = useCallback(() => setTimeLocked(true), [])
 
   async function toggleGroupPreds() {
     if (groupPreds) { setGroupPreds(null); return }
@@ -217,18 +320,11 @@ export default function MatchCard({ match, onPredictionSaved }) {
             }}>🔒 נעול · {fmtDate(match.scheduled_at)}</span>
           )}
           {up && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>
                 {fmtDate(match.scheduled_at)}
               </span>
-              {countdown && (
-                <span style={{
-                  fontSize: '11px', fontWeight: 600, fontVariantNumeric: 'tabular-nums',
-                  background: 'rgba(96,165,250,.1)', color: '#60a5fa',
-                  border: '1px solid rgba(96,165,250,.2)', borderRadius: '100px',
-                  padding: '2px 8px',
-                }}>⏱ {countdown}</span>
-              )}
+              {diffMs > 0 && <StopwatchCountdown diffMs={diffMs} />}
             </div>
           )}
         </div>
@@ -340,8 +436,8 @@ export default function MatchCard({ match, onPredictionSaved }) {
             </button>
             {groupPreds && (
               <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {groupPreds.map(p => (
-                  <div key={p.user_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 2px' }}>
+                {groupPreds.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 2px' }}>
                     <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.55)' }}>{p.user_name}</span>
                     {p.home_score != null ? (
                       <span style={{
