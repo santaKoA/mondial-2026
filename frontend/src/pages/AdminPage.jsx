@@ -166,6 +166,7 @@ export default function AdminPage() {
   const [syncing, setSyncing] = useState(false)
   const [deletingUser, setDeletingUser] = useState(null)
   const [resetPw, setResetPw] = useState(null) // { id, value }
+  const [showResetPw, setShowResetPw] = useState(false)
   // Test match state
   const [testMatches, setTestMatches] = useState([])
   const [testMatchCards, setTestMatchCards] = useState([])
@@ -643,13 +644,24 @@ export default function AdminPage() {
                       <td colSpan={6} style={{ padding: '10px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)', whiteSpace: 'nowrap' }}>סיסמה חדשה עבור {u.name}:</span>
-                          <input type="password" value={resetPw.value} onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
-                            placeholder="לפחות 4 תווים" autoFocus
-                            style={{ ...inputSt, flex: 1, fontFamily: 'monospace', fontSize: '13px' }}
-                            onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
-                            onFocus={e => e.target.style.borderColor = '#f5c842'}
-                            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
-                          />
+                          <div style={{ position: 'relative', flex: 1 }}>
+                            <input type={showResetPw ? 'text' : 'password'} value={resetPw.value} onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
+                              placeholder="לפחות 4 תווים" autoFocus
+                              style={{ ...inputSt, width: '100%', fontFamily: 'monospace', fontSize: '13px', paddingLeft: '32px' }}
+                              onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
+                              onFocus={e => e.target.style.borderColor = '#f5c842'}
+                              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
+                            />
+                            <button type="button" onClick={() => setShowResetPw(v => !v)}
+                              style={{
+                                position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+                                background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                                color: showResetPw ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.3)',
+                                fontSize: '14px', lineHeight: 1, transition: 'color .15s',
+                              }}
+                              title={showResetPw ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                            >{showResetPw ? '🙈' : '👁'}</button>
+                          </div>
                           <button onClick={() => { const pw = Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6); setResetPw(r => ({...r,value:pw})) }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', opacity: .5 }}>🎲</button>
                           {resetPw.value && (
