@@ -240,8 +240,10 @@ async def sync_results() -> dict:
                 # Live score (halftime or current score)
                 ht = m["score"].get("halfTime", {})
                 ft = m["score"].get("fullTime", {})
-                home_score = ft.get("home") or ht.get("home")
-                away_score = ft.get("away") or ht.get("away")
+                home_ft, away_ft = ft.get("home"), ft.get("away")
+                home_ht, away_ht = ht.get("home"), ht.get("away")
+                home_score = home_ft if home_ft is not None else home_ht
+                away_score = away_ft if away_ft is not None else away_ht
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score, finished=False):
                         scores_updated += 1
@@ -289,8 +291,10 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
     away_api = m["awayTeam"]["name"]
     ft = m["score"].get("fullTime", {})
     ht = m["score"].get("halfTime", {})
-    home_score = ft.get("home") or ht.get("home")
-    away_score = ft.get("away") or ht.get("away")
+    home_ft, away_ft = ft.get("home"), ft.get("away")
+    home_ht, away_ht = ht.get("home"), ht.get("away")
+    home_score = home_ft if home_ft is not None else home_ht
+    away_score = away_ft if away_ft is not None else away_ht
 
     LIVE_STATUSES = {"IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY"}
 

@@ -362,12 +362,13 @@ export default function AdminPage() {
     if (!specialValue.trim()) { toast.error('הזן ערך'); return }
     setSaving(true)
     try {
-      await api.post('/api/admin/special-predictions/correct', {
+      const { data } = await api.post('/api/admin/special-predictions/correct', {
         prediction_type: specialType,
         correct_value: specialValue,
         points_awarded: specialPoints,
       })
-      toast.success('נקודות הוענקו!')
+      toast.success(`✅ נקודות הוענקו! ${data.correct_count} משתתפים ניחשו נכון`)
+      await loadData()
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
@@ -642,7 +643,7 @@ export default function AdminPage() {
                       <td colSpan={6} style={{ padding: '10px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.4)', whiteSpace: 'nowrap' }}>סיסמה חדשה עבור {u.name}:</span>
-                          <input type="text" value={resetPw.value} onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
+                          <input type="password" value={resetPw.value} onChange={e => setResetPw(r => ({ ...r, value: e.target.value }))}
                             placeholder="לפחות 4 תווים" autoFocus
                             style={{ ...inputSt, flex: 1, fontFamily: 'monospace', fontSize: '13px' }}
                             onKeyDown={e => e.key === 'Enter' && handleResetPassword(u.id)}
