@@ -133,8 +133,8 @@ export default function SpecialPredictionsPage() {
       {/* Winner card */}
       <div style={cardSt(locked)}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700 }}>🏆 הזוכה במונדיאל</h2>
           <span style={{ fontSize: '12px', color: 'rgba(30,222,98,.7)', fontWeight: 600 }}>15 נק׳</span>
-          <h2 style={{ fontSize: '16px', fontWeight: 700 }}>🏆 זוכה המונדיאל</h2>
         </div>
 
         {winnerInput && (
@@ -207,8 +207,8 @@ export default function SpecialPredictionsPage() {
       {/* Top scorer card */}
       <div style={cardSt(locked)}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <span style={{ fontSize: '12px', color: 'rgba(30,222,98,.7)', fontWeight: 600 }}>15 נק׳</span>
           <h2 style={{ fontSize: '16px', fontWeight: 700 }}>⚽ מלך השערים</h2>
+          <span style={{ fontSize: '12px', color: 'rgba(30,222,98,.7)', fontWeight: 600 }}>15 נק׳</span>
         </div>
 
         {topScorerInput && (() => {
