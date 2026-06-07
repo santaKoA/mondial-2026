@@ -4,6 +4,53 @@ import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 
+// ─── Styles (outside component so they're stable references) ─────────────────
+const inputStyle = {
+  width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.14)',
+  borderRadius: '10px', padding: '12px 14px', color: '#ecf0ed',
+  fontFamily: 'Heebo, sans-serif', fontSize: '15px',
+  outline: 'none', transition: 'border-color .15s', boxSizing: 'border-box',
+}
+
+const btnPrimary = {
+  width: '100%', padding: '13px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+  background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
+  fontSize: '15px', fontWeight: 700, boxShadow: '0 2px 18px rgba(30,222,98,.2)',
+}
+
+function fieldWrap(label, input) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: '11px', color: 'rgba(255,255,255,.35)', marginBottom: '6px', fontWeight: 500 }}>{label}</label>
+      {input}
+    </div>
+  )
+}
+
+// ─── FormCard defined OUTSIDE JoinPage so it never remounts on state change ──
+function FormCard({ title, fields, cta, onSubmit, loading, onBack }) {
+  return (
+    <div style={{ maxWidth: '400px', margin: '0 auto', paddingBottom: '40px' }}>
+      <button onClick={onBack} style={{
+        background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.35)',
+        fontSize: '13px', fontFamily: 'Heebo, sans-serif', marginBottom: '20px',
+        display: 'flex', alignItems: 'center', gap: '4px',
+      }}>← חזור</button>
+      <div style={{
+        background: '#0c1810', border: '1px solid rgba(255,255,255,.07)', borderRadius: '14px', padding: '24px',
+        boxShadow: '0 1px 0 rgba(255,255,255,.04) inset, 0 4px 28px rgba(0,0,0,.5)',
+      }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '22px' }}>{title}</h2>
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {fields}
+          <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>{cta}</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function JoinPage() {
   const [mode, setMode] = useState(null)
   const [name, setName] = useState('')
@@ -98,19 +145,6 @@ export default function JoinPage() {
     }
   }
 
-  const inputStyle = {
-    width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.14)',
-    borderRadius: '10px', padding: '12px 14px', color: '#ecf0ed',
-    fontFamily: 'Heebo, sans-serif', fontSize: '15px',
-    outline: 'none', transition: 'border-color .15s', boxSizing: 'border-box',
-  }
-
-  const btnPrimary = {
-    width: '100%', padding: '13px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-    background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
-    fontSize: '15px', fontWeight: 700, boxShadow: '0 2px 18px rgba(30,222,98,.2)',
-  }
-
   // Created group screen
   if (createdGroup) {
     return (
@@ -147,37 +181,15 @@ export default function JoinPage() {
     )
   }
 
-  const FormCard = ({ title, fields, cta, onSubmit }) => (
-    <div style={{ maxWidth: '400px', margin: '0 auto', paddingBottom: '40px' }}>
-      <button onClick={() => setMode(null)} style={{
-        background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.35)',
-        fontSize: '13px', fontFamily: 'Heebo, sans-serif', marginBottom: '20px',
-        display: 'flex', alignItems: 'center', gap: '4px',
-      }}>← חזור</button>
-      <div style={{
-        background: '#0c1810', border: '1px solid rgba(255,255,255,.07)', borderRadius: '14px', padding: '24px',
-        boxShadow: '0 1px 0 rgba(255,255,255,.04) inset, 0 4px 28px rgba(0,0,0,.5)',
-      }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '22px' }}>{title}</h2>
-        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {fields}
-          <button type="submit" disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.6 : 1 }}>{cta}</button>
-        </form>
-      </div>
-    </div>
-  )
-
-  const fieldWrap = (label, input) => (
-    <div>
-      <label style={{ display: 'block', fontSize: '11px', color: 'rgba(255,255,255,.35)', marginBottom: '6px', fontWeight: 500 }}>{label}</label>
-      {input}
-    </div>
-  )
-
   if (mode === 'create') return (
-    <FormCard title="🆕 צור קבוצה חדשה" cta={loading ? '...' : 'צור קבוצה וקבל קוד שיתוף'} onSubmit={handleCreate}
+    <FormCard
+      title="🆕 צור קבוצה חדשה"
+      cta={loading ? '...' : 'צור קבוצה וקבל קוד שיתוף'}
+      onSubmit={handleCreate}
+      loading={loading}
+      onBack={() => setMode(null)}
       fields={<>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30}
+        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('שם הקבוצה', <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder='"חברים מהעבודה"' style={inputStyle} maxLength={40}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
@@ -190,9 +202,14 @@ export default function JoinPage() {
   )
 
   if (mode === 'join') return (
-    <FormCard title="🔗 הצטרף לקבוצה" cta={loading ? '...' : 'הצטרף לתחרות'} onSubmit={handleJoin}
+    <FormCard
+      title="🔗 הצטרף לקבוצה"
+      cta={loading ? '...' : 'הצטרף לתחרות'}
+      onSubmit={handleJoin}
+      loading={loading}
+      onBack={() => setMode(null)}
       fields={<>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30}
+        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('קוד הקבוצה', <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="הקוד שקיבלת מהחבר" style={inputStyle}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
