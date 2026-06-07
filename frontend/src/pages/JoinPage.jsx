@@ -177,7 +177,7 @@ export default function JoinPage() {
   if (mode === 'create') return (
     <FormCard title="🆕 צור קבוצה חדשה" cta={loading ? '...' : 'צור קבוצה וקבל קוד שיתוף'} onSubmit={handleCreate}
       fields={<>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
+        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('שם הקבוצה', <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder='"חברים מהעבודה"' style={inputStyle} maxLength={40}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
@@ -192,7 +192,7 @@ export default function JoinPage() {
   if (mode === 'join') return (
     <FormCard title="🔗 הצטרף לקבוצה" cta={loading ? '...' : 'הצטרף לתחרות'} onSubmit={handleJoin}
       fields={<>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
+        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('קוד הקבוצה', <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="הקוד שקיבלת מהחבר" style={inputStyle}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
