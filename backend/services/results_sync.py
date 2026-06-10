@@ -127,6 +127,19 @@ def _parse_match_dt(m: dict) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def _final_scores(score: dict) -> tuple:
+    """
+    Final result by 90 minutes only (house rule: predictions are for regular time).
+    If the match went to extra time, the API puts the 90-min score in regularTime;
+    otherwise fullTime *is* the 90-min score.
+    """
+    rt = score.get("regularTime") or {}
+    ft = score.get("fullTime") or {}
+    if rt.get("home") is not None and rt.get("away") is not None:
+        return rt["home"], rt["away"]
+    return ft.get("home"), ft.get("away")
+
+
 def _find_knockout_match_by_time(db, match_dt: datetime) -> models.Match | None:
     """Find unassigned knockout match closest to match_dt (within ±2h)."""
     window = timedelta(hours=2)
@@ -208,15 +221,21 @@ async def sync_results() -> dict:
                 if not home_team or not away_team:
                     continue
 
-                match = db.query(models.Match).filter_by(
-                    home_team_id=home_team.id,
-                    away_team_id=away_team.id,
-                    is_test=False,
+                # Name match must also agree on kickoff time (±2h) — otherwise a
+                # knockout rematch of two group-stage opponents would overwrite
+                # their old group match
+                match_dt = _parse_match_dt(m)
+                window = timedelta(hours=2)
+                match = db.query(models.Match).filter(
+                    models.Match.home_team_id == home_team.id,
+                    models.Match.away_team_id == away_team.id,
+                    models.Match.is_test == False,
+                    models.Match.scheduled_at >= match_dt - window,
+                    models.Match.scheduled_at <= match_dt + window,
                 ).first()
 
                 # Knockout: match by time and auto-assign
                 if not match:
-                    match_dt = _parse_match_dt(m)
                     match = _find_knockout_match_by_time(db, match_dt)
                     if match:
                         match.home_team_id = home_team.id
@@ -231,8 +250,7 @@ async def sync_results() -> dict:
 
             # Update score — finished or live
             if status == "FINISHED":
-                home_score = m["score"]["fullTime"]["home"]
-                away_score = m["score"]["fullTime"]["away"]
+                home_score, away_score = _final_scores(m["score"])
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score, finished=True):
                         scores_updated += 1
@@ -289,12 +307,16 @@ async def sync_single_fixture(fixture_id: int, match_id: int) -> dict:
     status = m["status"]
     home_api = m["homeTeam"]["name"]
     away_api = m["awayTeam"]["name"]
-    ft = m["score"].get("fullTime", {})
-    ht = m["score"].get("halfTime", {})
-    home_ft, away_ft = ft.get("home"), ft.get("away")
-    home_ht, away_ht = ht.get("home"), ht.get("away")
-    home_score = home_ft if home_ft is not None else home_ht
-    away_score = away_ft if away_ft is not None else away_ht
+    if status == "FINISHED":
+        # Final result by 90 minutes only (excludes extra time / penalties)
+        home_score, away_score = _final_scores(m["score"])
+    else:
+        ft = m["score"].get("fullTime", {})
+        ht = m["score"].get("halfTime", {})
+        home_ft, away_ft = ft.get("home"), ft.get("away")
+        home_ht, away_ht = ht.get("home"), ht.get("away")
+        home_score = home_ft if home_ft is not None else home_ht
+        away_score = away_ft if away_ft is not None else away_ht
 
     LIVE_STATUSES = {"IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY"}
 
@@ -404,6 +426,27 @@ def _next_event_secs() -> float:
         db.close()
 
 
+def _live_overdue() -> bool:
+    """
+    True if any match is still 'live' past its +120min sync point — e.g. extra
+    time, penalties, or a long stoppage. We keep re-syncing every ~10 minutes
+    until the API reports FINISHED, up to 5 hours after kickoff.
+    """
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        live = db.query(models.Match).filter(
+            models.Match.status == "live",
+            models.Match.home_team_id.isnot(None),
+        ).all()
+        for m in live:
+            if m.scheduled_at + timedelta(minutes=120) <= now <= m.scheduled_at + timedelta(hours=5):
+                return True
+        return False
+    finally:
+        db.close()
+
+
 def _has_api_sync_due() -> bool:
     """True if any match is within the 5-min window after its +45min or +120min point."""
     db = SessionLocal()
@@ -437,12 +480,16 @@ async def polling_loop():
             # Mark matches that just kicked off as live 0-0
             _mark_kicked_off_matches()
 
-            # Fire API sync if we're at a +45 or +120 point
-            if _has_api_sync_due():
+            # Fire API sync if we're at a +45/+120 point, or a match ran past
+            # +120 and is still live (extra time / long stoppage)
+            if _has_api_sync_due() or _live_overdue():
                 logger.info("API sync point reached")
                 await sync_results()
                 await sync_test_matches()
-                await asyncio.sleep(1860)  # 31-min cooldown — past the 30-min detection window
+                if _live_overdue():
+                    await asyncio.sleep(600)   # still live — retry every 10 min
+                else:
+                    await asyncio.sleep(1860)  # 31-min cooldown — past the 30-min detection window
                 continue
 
             # Sleep until next event (kickoff or sync point)
