@@ -203,12 +203,15 @@ export default function JoinPage() {
 
   if (mode === 'join') return (
     <FormCard
-      title="🔗 הצטרף לקבוצה"
+      title="🔗 הצטרף / כניסה חוזרת"
       cta={loading ? '...' : 'הצטרף לתחרות'}
       onSubmit={handleJoin}
       loading={loading}
       onBack={() => setMode(null)}
       fields={<>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.35)', margin: '-6px 0 4px' }}>
+          כבר נרשמת? הכנס את אותם שם, קוד קבוצה וסיסמה
+        </p>
         {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('קוד הקבוצה', <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="הקוד שקיבלת מהחבר" style={inputStyle}
@@ -274,7 +277,7 @@ export default function JoinPage() {
       {/* Mode buttons */}
       {[
         { key: 'create', emoji: '🆕', title: 'צור קבוצה חדשה',      sub: 'פתח תחרות ושתף חברים' },
-        { key: 'join',   emoji: '🔗', title: 'הצטרף לקבוצה קיימת', sub: 'יש לי קוד מחבר' },
+        { key: 'join',   emoji: '🔗', title: 'הצטרף לקבוצה קיימת', sub: 'הצטרפות עם קוד או כניסה חוזרת' },
       ].map(o => (
         <button key={o.key} onClick={() => setMode(o.key)} style={{
           width: '100%', background: '#0c1810', border: '1px solid rgba(255,255,255,.07)',
