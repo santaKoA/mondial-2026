@@ -87,13 +87,14 @@ def list_users(
     db: Session = Depends(get_db),
 ):
     users = db.query(models.User).options(
-        joinedload(models.User.predictions),
+        joinedload(models.User.predictions).joinedload(models.Prediction.match),
         joinedload(models.User.special_predictions),
         joinedload(models.User.groups).joinedload(models.UserGroup.group),
     ).all()
     result = []
     for user in users:
-        match_pts = sum(p.points or 0 for p in user.predictions)
+        real_preds = [p for p in user.predictions if not p.match.is_test]
+        match_pts = sum(p.points or 0 for p in real_preds)
         special_pts = sum(s.points or 0 for s in user.special_predictions)
         group_names = [ug.group.name for ug in user.groups if ug.group]
         result.append(
@@ -102,7 +103,7 @@ def list_users(
                 name=user.name,
                 is_admin=user.is_admin,
                 total_points=match_pts + special_pts,
-                prediction_count=len(user.predictions),
+                prediction_count=len(real_preds),
                 created_at=user.created_at,
                 group_names=group_names,
             )

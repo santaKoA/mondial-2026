@@ -12,8 +12,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _user_to_out(user: models.User, db: Session) -> schemas.UserOut:
-    total = sum(p.points or 0 for p in user.predictions) + sum(s.points or 0 for s in user.special_predictions)
-    count = len(user.predictions)
+    real_preds = [p for p in user.predictions if not p.match.is_test]
+    total = sum(p.points or 0 for p in real_preds) + sum(s.points or 0 for s in user.special_predictions)
+    count = len(real_preds)
     return schemas.UserOut(
         id=user.id,
         name=user.name,
@@ -37,7 +38,8 @@ def _add_to_group(user: models.User, group: models.Group, db: Session):
         db.add(models.UserGroup(user_id=user.id, group_id=group.id))
 
 
-def _get_or_create_user(name: str, password: str, group: models.Group, is_admin: bool, db: Session) -> models.User:
+def _get_or_create_user(name: str, password: str, group: models.Group, is_admin: bool, db: Session) -> tuple[models.User, bool]:
+    """Returns (user, created). created=True only when a brand-new user was registered."""
     if not password:
         raise HTTPException(status_code=400, detail="סיסמה נדרשת")
 
@@ -61,15 +63,19 @@ def _get_or_create_user(name: str, password: str, group: models.Group, is_admin:
         if user.password_hash is None:
             user.password_hash = hash_password(password)
         elif not verify_password(password, user.password_hash):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="סיסמה שגויה")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="סיסמה שגויה. אם אתה משתמש חדש — השם הזה כבר תפוס בקבוצה, נסה שם אחר",
+            )
         if is_admin and not user.is_admin:
             user.is_admin = True
         db.flush()
+        return user, False
     else:
         user = models.User(name=name, is_admin=is_admin, password_hash=hash_password(password), group_id=group.id)
         db.add(user)
         db.flush()
-    return user
+        return user, True
 
 
 @router.post("/join", response_model=schemas.TokenResponse)
@@ -84,13 +90,19 @@ def join(body: schemas.JoinRequest, db: Session = Depends(get_db)):
     if body.code == settings.ADMIN_CODE:
         is_admin = True
         group = db.query(models.Group).filter(models.Group.code == settings.GROUP_CODE).first()
+        if not group:
+            raise HTTPException(status_code=500, detail="קבוצת ברירת המחדל לא קיימת — פנה למנהל המערכת")
     else:
         group = db.query(models.Group).filter(models.Group.code == body.code).first()
         if not group:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="קוד שגוי — בדוק שהקוד נכון")
 
-    user = _get_or_create_user(name, body.password, group, is_admin, db)
-    _add_to_group(user, group, db)
+    user, created = _get_or_create_user(name, body.password, group, is_admin, db)
+    # Only auto-add membership for brand-new users. Existing users logging back in
+    # keep their current memberships — so a member removed by the group owner
+    # isn't silently re-added on next login.
+    if created:
+        _add_to_group(user, group, db)
 
     db.commit()
     db.refresh(user)
@@ -111,7 +123,7 @@ def create_group_and_join(body: schemas.GroupCreatePublicIn, db: Session = Depen
     group = models.Group(name=group_name, code=code, owner_id=None)
     db.add(group)
     db.flush()
-    user = _get_or_create_user(user_name, body.password, group, False, db)
+    user, _ = _get_or_create_user(user_name, body.password, group, False, db)
     group.owner_id = user.id
     db.flush()
     _add_to_group(user, group, db)

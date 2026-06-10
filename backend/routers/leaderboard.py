@@ -58,15 +58,28 @@ def leaderboard(
         joinedload(models.User.predictions).joinedload(models.Prediction.match),
         joinedload(models.User.special_predictions),
     ]
+    my_group_ids = {
+        ug.group_id for ug in
+        db.query(models.UserGroup).filter(models.UserGroup.user_id == current_user.id).all()
+    }
+
     if group_id:
+        if group_id not in my_group_ids and not current_user.is_admin:
+            raise HTTPException(status_code=403, detail="אינך חבר בקבוצה זו")
         user_ids = [
             ug.user_id for ug in db.query(models.UserGroup).filter(
                 models.UserGroup.group_id == group_id
             ).all()
         ]
-        users = db.query(models.User).options(*eager).filter(models.User.id.in_(user_ids)).all()
     else:
-        users = db.query(models.User).options(*eager).all()
+        # No group specified — only users sharing a group with the requester
+        user_ids = [
+            ug.user_id for ug in db.query(models.UserGroup).filter(
+                models.UserGroup.group_id.in_(my_group_ids)
+            ).all()
+        ] if my_group_ids else [current_user.id]
+
+    users = db.query(models.User).options(*eager).filter(models.User.id.in_(user_ids)).all()
 
     return _build_leaderboard(users, current_user_id=current_user.id, reveal_others=tournament_started())
 

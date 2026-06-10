@@ -297,8 +297,8 @@ export default function LeaderboardPage() {
         }}>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.5)', margin: 0 }}>הכנס את קוד הקבוצה שקיבלת:</p>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="ABC123" style={{ ...inputSt, letterSpacing: '3px', fontWeight: 700 }}
+            <input type="text" value={joinCode} onChange={e => setJoinCode(e.target.value)}
+              placeholder="הקוד שקיבלת" style={{ ...inputSt, letterSpacing: '3px', fontWeight: 700 }}
               onFocus={e => e.target.style.borderColor = '#1ede62'}
               onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'}
               autoFocus

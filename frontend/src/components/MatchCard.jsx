@@ -250,7 +250,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
   async function handleSave() {
     const h = parseInt(home)
     const a = parseInt(away)
-    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) { toast.error('הזן תוצאה תקינה'); return }
+    if (isNaN(h) || isNaN(a) || h < 0 || a < 0 || h > 99 || a > 99) { toast.error('הזן תוצאה תקינה (0–99)'); return }
     setSaving(true)
     try {
       await api.post(`/api/predictions/${match.id}`, { home_score: h, away_score: a })
