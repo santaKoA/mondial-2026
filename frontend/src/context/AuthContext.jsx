@@ -23,14 +23,10 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  function login(token, userData, groupCode, groupName) {
+  function login(token, userData) {
     localStorage.setItem('token', token)
-    if (!userData.is_admin && groupCode && groupName) {
-      localStorage.setItem('mondial_last_user', JSON.stringify({
-        name: userData.name,
-        groupCode,
-        groupName,
-      }))
+    if (!userData.is_admin) {
+      localStorage.setItem('mondial_last_user', JSON.stringify({ name: userData.name }))
     }
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     setUser(userData)

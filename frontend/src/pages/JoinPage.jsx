@@ -54,13 +54,9 @@ function FormCard({ title, fields, cta, onSubmit, loading, onBack }) {
 export default function JoinPage() {
   const [mode, setMode] = useState(null)
   const [name, setName] = useState('')
-  const [groupName, setGroupName] = useState('')
-  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [createdGroup, setCreatedGroup] = useState(null)
-  const [pendingAuth, setPendingAuth] = useState(null)
   const [lastUser, setLastUser] = useState(null)
   const [quickPassword, setQuickPassword] = useState('')
   const { login } = useAuth()
@@ -90,12 +86,11 @@ export default function JoinPage() {
     if (!quickPassword.trim()) return
     setLoading(true)
     try {
-      const { data } = await api.post('/api/auth/join', {
+      const { data } = await api.post('/api/auth/login', {
         name: lastUser.name,
-        code: lastUser.groupCode,
         password: quickPassword,
       })
-      login(data.token, data.user, data.group?.code, data.group?.name)
+      login(data.token, data.user)
       toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
       navigate(loginDest())
     } catch (e) {
@@ -105,19 +100,19 @@ export default function JoinPage() {
     }
   }
 
-  async function handleCreate(e) {
+  async function handleRegister(e) {
     e.preventDefault()
-    if (!name.trim() || !groupName.trim() || !password.trim()) return
+    if (!name.trim() || !password.trim()) return
     if (password !== confirmPassword) { toast.error('הסיסמאות אינן תואמות'); return }
     setLoading(true)
     try {
-      const { data } = await api.post('/api/auth/create-group', {
-        user_name: name.trim(),
-        group_name: groupName.trim(),
+      const { data } = await api.post('/api/auth/register', {
+        name: name.trim(),
         password,
       })
-      setPendingAuth({ token: data.token, user: data.user })
-      setCreatedGroup(data.group)
+      login(data.token, data.user)
+      toast.success(`ברוך הבא, ${data.user.name}! ⚽ עכשיו הצטרף לקבוצה דרך מסך הטבלה`)
+      navigate('/leaderboard')
     } catch (e) {
       toast.error(e.response?.data?.detail || 'שגיאה')
     } finally {
@@ -125,75 +120,39 @@ export default function JoinPage() {
     }
   }
 
-  async function handleJoin(e) {
+  async function handleLogin(e) {
     e.preventDefault()
-    if (!name.trim() || !code.trim() || !password.trim()) return
+    if (!name.trim() || !password.trim()) return
     setLoading(true)
     try {
-      const { data } = await api.post('/api/auth/join', {
+      const { data } = await api.post('/api/auth/login', {
         name: name.trim(),
-        code: code.trim(),
         password,
       })
-      login(data.token, data.user, data.group?.code, data.group?.name)
+      login(data.token, data.user)
       toast.success(`ברוך הבא, ${data.user.name}! ⚽`)
       navigate(loginDest())
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'קוד שגוי')
+      toast.error(e.response?.data?.detail || 'שם משתמש או סיסמה שגויים')
     } finally {
       setLoading(false)
     }
   }
 
-  // Created group screen
-  if (createdGroup) {
-    return (
-      <div style={{ minHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-        <div style={{ width: '100%', maxWidth: '360px', textAlign: 'center' }}>
-          <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '6px' }}>הקבוצה נוצרה!</h1>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.5)', marginBottom: '24px' }}>שתף את הקוד עם החברים</p>
-
-          <div style={{
-            background: '#0c1810', border: '1px solid rgba(255,255,255,.07)', borderRadius: '14px', padding: '20px', marginBottom: '12px',
-          }}>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.4)', marginBottom: '6px' }}>שם הקבוצה</p>
-            <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>{createdGroup.name}</p>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.4)', marginBottom: '8px' }}>קוד הצטרפות</p>
-            <div onClick={() => { navigator.clipboard?.writeText(createdGroup.code); toast.success('קוד הועתק ללוח!') }}
-              style={{
-                background: 'rgba(30,222,98,.12)', border: '2px solid rgba(30,222,98,.3)',
-                borderRadius: '12px', padding: '16px 24px', cursor: 'pointer', transition: 'background .15s',
-              }}>
-              <span style={{ fontSize: '32px', fontFamily: 'monospace', fontWeight: 900, color: '#1ede62', letterSpacing: '6px' }}>
-                {createdGroup.code}
-              </span>
-              <p style={{ fontSize: '11px', color: 'rgba(30,222,98,.5)', marginTop: '6px' }}>לחץ להעתקה</p>
-            </div>
-          </div>
-
-          <button onClick={() => { login(pendingAuth.token, pendingAuth.user, createdGroup.code, createdGroup.name); navigate(loginDest()) }}
-            style={btnPrimary}>
-            המשך לניחושים ⚽
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (mode === 'create') return (
+  if (mode === 'register') return (
     <FormCard
-      title="🆕 צור קבוצה חדשה"
-      cta={loading ? '...' : 'צור קבוצה וקבל קוד שיתוף'}
-      onSubmit={handleCreate}
+      title="🆕 הרשמה"
+      cta={loading ? '...' : 'הירשם'}
+      onSubmit={handleRegister}
       loading={loading}
       onBack={() => setMode(null)}
       fields={<>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.35)', margin: '-6px 0 4px' }}>
+          אחרי ההרשמה תוכל להצטרף לקבוצה עם קוד דרך מסך הטבלה
+        </p>
+        {fieldWrap('שם משתמש', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
-        {fieldWrap('שם הקבוצה', <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder='"חברים מהעבודה"' style={inputStyle} maxLength={40}
-          onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
-        {fieldWrap('סיסמה', <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="בחר סיסמה" style={inputStyle}
+        {fieldWrap('סיסמה', <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="בחר סיסמה (לפחות 4 תווים)" style={inputStyle}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
         {fieldWrap('אימות סיסמה', <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="הכנס שוב" style={inputStyle}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
@@ -201,22 +160,17 @@ export default function JoinPage() {
     />
   )
 
-  if (mode === 'join') return (
+  if (mode === 'login') return (
     <FormCard
-      title="🔗 הצטרף / כניסה חוזרת"
-      cta={loading ? '...' : 'הצטרף לתחרות'}
-      onSubmit={handleJoin}
+      title="🔓 התחברות"
+      cta={loading ? '...' : 'התחבר'}
+      onSubmit={handleLogin}
       loading={loading}
       onBack={() => setMode(null)}
       fields={<>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.35)', margin: '-6px 0 4px' }}>
-          כבר נרשמת? הכנס את אותם שם, קוד קבוצה וסיסמה
-        </p>
-        {fieldWrap('השם שלך', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="איך קוראים לך?" style={inputStyle} maxLength={30} autoFocus
+        {fieldWrap('שם משתמש', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="השם שנרשמת איתו" style={inputStyle} maxLength={30} autoFocus
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
-        {fieldWrap('קוד הקבוצה', <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="הקוד שקיבלת מהחבר" style={inputStyle}
-          onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
-        {fieldWrap('סיסמה', <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="הכנס סיסמה" style={inputStyle}
+        {fieldWrap('סיסמה', <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="הסיסמה שלך" style={inputStyle}
           onFocus={e => e.target.style.borderColor = '#1ede62'} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,.14)'} />)}
       </>}
     />
@@ -248,10 +202,7 @@ export default function JoinPage() {
               background: 'rgba(30,222,98,.14)', border: '1px solid rgba(30,222,98,.28)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 700, color: '#1ede62',
             }}>{lastUser.name.charAt(0)}</div>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700 }}>{lastUser.name}</div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>קבוצה: {lastUser.groupName}</div>
-            </div>
+            <div style={{ fontSize: '14px', fontWeight: 700 }}>{lastUser.name}</div>
           </div>
           <form onSubmit={handleQuickLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input type="password" value={quickPassword} onChange={e => setQuickPassword(e.target.value)}
@@ -276,8 +227,8 @@ export default function JoinPage() {
 
       {/* Mode buttons */}
       {[
-        { key: 'create', emoji: '🆕', title: 'צור קבוצה חדשה',      sub: 'פתח תחרות ושתף חברים' },
-        { key: 'join',   emoji: '🔗', title: 'הצטרף לקבוצה קיימת', sub: 'הצטרפות עם קוד או כניסה חוזרת' },
+        { key: 'register', emoji: '🆕', title: 'הרשמה',    sub: 'משתמש חדש? צור חשבון' },
+        { key: 'login',    emoji: '🔓', title: 'התחברות', sub: 'כבר נרשמת? היכנס לחשבון שלך' },
       ].map(o => (
         <button key={o.key} onClick={() => setMode(o.key)} style={{
           width: '100%', background: '#0c1810', border: '1px solid rgba(255,255,255,.07)',

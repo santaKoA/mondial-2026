@@ -78,6 +78,43 @@ def _get_or_create_user(name: str, password: str, group: models.Group, is_admin:
         return user, True
 
 
+@router.post("/register", response_model=schemas.TokenResponse)
+def register(body: schemas.RegisterIn, db: Session = Depends(get_db)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="יש להזין שם משתמש")
+    if len(body.password) < 4:
+        raise HTTPException(status_code=400, detail="הסיסמה חייבת להכיל לפחות 4 תווים")
+
+    existing = db.query(models.User).filter(models.User.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="שם המשתמש כבר תפוס — בחר שם אחר")
+
+    user = models.User(name=name, is_admin=False, password_hash=hash_password(body.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = auth_utils.create_token(user.id, user.name, user.is_admin)
+    return schemas.TokenResponse(token=token, user=_user_to_out(user, db), group=None)
+
+
+@router.post("/login", response_model=schemas.TokenResponse)
+def login(body: schemas.LoginIn, db: Session = Depends(get_db)):
+    name = body.name.strip()
+    # Legacy data may hold duplicate names across groups — pick the one whose password matches
+    candidates = db.query(models.User).filter(models.User.name == name).all()
+    user = next(
+        (u for u in candidates if u.password_hash and verify_password(body.password, u.password_hash)),
+        None,
+    )
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="שם משתמש או סיסמה שגויים")
+
+    token = auth_utils.create_token(user.id, user.name, user.is_admin)
+    return schemas.TokenResponse(token=token, user=_user_to_out(user, db), group=None)
+
+
 @router.post("/join", response_model=schemas.TokenResponse)
 def join(body: schemas.JoinRequest, db: Session = Depends(get_db)):
     name = body.name.strip()

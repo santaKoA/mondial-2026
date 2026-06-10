@@ -67,6 +67,16 @@ class JoinRequest(BaseModel):
     password: str
 
 
+class RegisterIn(BaseModel):
+    name: str
+    password: str
+
+
+class LoginIn(BaseModel):
+    name: str
+    password: str
+
+
 class TokenResponse(BaseModel):
     token: str
     user: UserOut
