@@ -35,7 +35,8 @@ def _build_leaderboard(users: list[models.User], current_user_id: int, reveal_ot
         direction_count = 0
         for p in real_preds:
             m = p.match
-            if m.status != "finished" or m.home_score is None or m.away_score is None:
+            # Live matches count too — provisional, recalculated per request
+            if m.status not in ("finished", "live") or m.home_score is None or m.away_score is None:
                 continue
             if p.home_score == m.home_score and p.away_score == m.away_score:
                 exact_count += 1
