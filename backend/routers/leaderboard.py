@@ -6,6 +6,7 @@ from database import get_db
 import models
 import schemas
 import auth as auth_utils
+import scoring
 from utils import tournament_started
 
 router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
@@ -15,7 +16,18 @@ def _build_leaderboard(users: list[models.User], current_user_id: int, reveal_ot
     result = []
     for user in users:
         real_preds = [p for p in user.predictions if not p.match.is_test]
-        match_pts = sum(p.points or 0 for p in real_preds)
+        # Final points for finished matches + provisional points for live ones
+        # (recomputed from the current live score on every request, so the
+        # table moves in real time; finalized for good when the match ends)
+        match_pts = 0
+        for p in real_preds:
+            m = p.match
+            if m.status == "finished":
+                match_pts += p.points or 0
+            elif m.status == "live" and m.home_score is not None and m.away_score is not None:
+                match_pts += scoring.calculate_points(
+                    m.stage, m.home_score, m.away_score, p.home_score, p.away_score
+                )
         special_pts = sum(s.points or 0 for s in user.special_predictions)
         winner_pick = next((s.value for s in user.special_predictions if s.prediction_type == "winner"), None)
         top_scorer_pick = next((s.value for s in user.special_predictions if s.prediction_type == "top_scorer"), None)
