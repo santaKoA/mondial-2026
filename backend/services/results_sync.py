@@ -426,6 +426,86 @@ def _next_event_secs() -> float:
         db.close()
 
 
+# ── ESPN live scores ──────────────────────────────────────────────────────────
+# Unofficial but stable public endpoint with real-time scores (football-data's
+# free tier only updates around half-time/full-time). Used for LIVE DISPLAY
+# ONLY — final results and points always come from football-data (regularTime).
+
+ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
+
+
+async def sync_live_espn() -> int:
+    """Update the live score of in-play matches from ESPN. Never changes match
+    status and never touches finished matches or points."""
+    db = SessionLocal()
+    try:
+        live_matches = db.query(models.Match).filter(
+            models.Match.status == "live",
+            models.Match.home_team_id.isnot(None),
+            models.Match.is_test == False,
+        ).all()
+        if not live_matches:
+            return 0
+        team_names = {t.id: t.name for t in db.query(models.Team).all()}
+        index = {
+            (team_names.get(m.home_team_id), team_names.get(m.away_team_id)): m
+            for m in live_matches
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(ESPN_SCOREBOARD_URL)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.warning(f"ESPN live sync error: {e}")
+            return 0
+
+        updated = 0
+        for e in data.get("events", []):
+            comp = e.get("competitions", [{}])[0]
+            state = comp.get("status", {}).get("type", {}).get("state")
+            if state != "in":
+                continue  # finished matches are football-data's job
+            home_heb = away_heb = None
+            home_score = away_score = None
+            for c in comp.get("competitors", []):
+                heb = _to_hebrew(c.get("team", {}).get("displayName", ""))
+                try:
+                    sc = int(c.get("score"))
+                except (TypeError, ValueError):
+                    sc = None
+                if c.get("homeAway") == "home":
+                    home_heb, home_score = heb, sc
+                else:
+                    away_heb, away_score = heb, sc
+            if home_score is None or away_score is None:
+                continue
+            match = index.get((home_heb, away_heb))
+            if match and (match.home_score != home_score or match.away_score != away_score):
+                match.home_score = home_score
+                match.away_score = away_score
+                updated += 1
+        if updated:
+            db.commit()
+            logger.info(f"ESPN live: updated {updated} match(es)")
+        return updated
+    finally:
+        db.close()
+
+
+def _any_live_match() -> bool:
+    db = SessionLocal()
+    try:
+        return db.query(models.Match).filter(
+            models.Match.status == "live",
+            models.Match.home_team_id.isnot(None),
+            models.Match.is_test == False,
+        ).count() > 0
+    finally:
+        db.close()
+
+
 def _live_overdue() -> bool:
     """
     True if any match is still 'live' past its +120min sync point — e.g. extra
@@ -471,25 +551,32 @@ async def polling_loop():
     """
     Background task:
     1. At kickoff → mark match live with 0-0 (no API call)
-    2. At kickoff+45min → API sync (halftime score)
-    3. At kickoff+120min → API sync (final result)
+    2. While live → ESPN live-score update every 3 minutes (display only)
+    3. At kickoff+45min → football-data sync (halftime score)
+    4. At kickoff+120min → football-data sync (final result + points),
+       retried every 10 min while still live (extra time), up to 5h
     """
+    import time as _time
     await asyncio.sleep(30)
+    fd_cooldown_until = 0.0
     while True:
         try:
             # Mark matches that just kicked off as live 0-0
             _mark_kicked_off_matches()
 
-            # Fire API sync if we're at a +45/+120 point, or a match ran past
+            # football-data sync at +45/+120 points, or while a match ran past
             # +120 and is still live (extra time / long stoppage)
-            if _has_api_sync_due() or _live_overdue():
+            if _time.monotonic() >= fd_cooldown_until and (_has_api_sync_due() or _live_overdue()):
                 logger.info("API sync point reached")
                 await sync_results()
                 await sync_test_matches()
-                if _live_overdue():
-                    await asyncio.sleep(600)   # still live — retry every 10 min
-                else:
-                    await asyncio.sleep(1860)  # 31-min cooldown — past the 30-min detection window
+                # cooldown: 10 min while a match is overdue, else past the 30-min window
+                fd_cooldown_until = _time.monotonic() + (600 if _live_overdue() else 1860)
+
+            # While any match is live — tick ESPN every 3 minutes
+            if _any_live_match():
+                await sync_live_espn()
+                await asyncio.sleep(180)
                 continue
 
             # Sleep until next event (kickoff or sync point)
