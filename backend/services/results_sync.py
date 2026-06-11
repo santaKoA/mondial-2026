@@ -186,8 +186,6 @@ async def sync_results() -> dict:
     teams_assigned = 0
     unknown_teams: list[str] = []
 
-    LIVE_STATUSES = {"IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY"}
-
     db = SessionLocal()
     try:
         # Build fixture_id → DB match map for fast lookup
@@ -248,22 +246,12 @@ async def sync_results() -> dict:
             if not match:
                 continue
 
-            # Update score — finished or live
+            # Finals only — live display is ESPN's job (football-data's free
+            # tier lags, and stale half-time data must not overwrite ESPN)
             if status == "FINISHED":
                 home_score, away_score = _final_scores(m["score"])
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score, finished=True):
-                        scores_updated += 1
-            elif status in LIVE_STATUSES:
-                # Live score (halftime or current score)
-                ht = m["score"].get("halfTime", {})
-                ft = m["score"].get("fullTime", {})
-                home_ft, away_ft = ft.get("home"), ft.get("away")
-                home_ht, away_ht = ht.get("home"), ht.get("away")
-                home_score = home_ft if home_ft is not None else home_ht
-                away_score = away_ft if away_ft is not None else away_ht
-                if home_score is not None and away_score is not None:
-                    if _apply_result(db, match, home_score, away_score, finished=False):
                         scores_updated += 1
 
         db.commit()
@@ -435,8 +423,13 @@ ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa
 
 
 async def sync_live_espn() -> int:
-    """Update the live score of in-play matches from ESPN. Never changes match
-    status and never touches finished matches or points."""
+    """
+    ESPN sync for matches that are live in our DB:
+    - state 'in'  → update the displayed score (all stages)
+    - state 'post' → finalize GROUP-STAGE matches only (no extra time in
+      groups, so ESPN's final score == the 90-minute score). Knockout finals
+      stay with football-data, which separates regularTime from extra time.
+    """
     db = SessionLocal()
     try:
         live_matches = db.query(models.Match).filter(
@@ -465,8 +458,8 @@ async def sync_live_espn() -> int:
         for e in data.get("events", []):
             comp = e.get("competitions", [{}])[0]
             state = comp.get("status", {}).get("type", {}).get("state")
-            if state != "in":
-                continue  # finished matches are football-data's job
+            if state not in ("in", "post"):
+                continue
             home_heb = away_heb = None
             home_score = away_score = None
             for c in comp.get("competitors", []):
@@ -482,10 +475,19 @@ async def sync_live_espn() -> int:
             if home_score is None or away_score is None:
                 continue
             match = index.get((home_heb, away_heb))
-            if match and (match.home_score != home_score or match.away_score != away_score):
-                match.home_score = home_score
-                match.away_score = away_score
-                updated += 1
+            if not match:
+                continue
+            if state == "post" and match.stage == "group":
+                # Group stage: ESPN final == 90-min score → finish + points
+                if _apply_result(db, match, home_score, away_score, finished=True):
+                    updated += 1
+                    logger.info(f"ESPN finalized group match {match.id}: {home_score}-{away_score}")
+            elif state == "in":
+                if match.home_score != home_score or match.away_score != away_score:
+                    match.home_score = home_score
+                    match.away_score = away_score
+                    updated += 1
+            # state == 'post' on a knockout match: leave for football-data
         if updated:
             db.commit()
             logger.info(f"ESPN live: updated {updated} match(es)")
