@@ -364,7 +364,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
         </div>
       </div>
 
-      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <TeamFlag team={match.home_team} />
         </div>
