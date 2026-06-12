@@ -119,7 +119,7 @@ export default function UserProfilePage() {
           </div>
         </div>
         <span style={{
-          fontSize: '13px', fontWeight: 700, direction: 'ltr', fontVariantNumeric: 'tabular-nums',
+          fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
           color: style.scoreColor, flexShrink: 0,
         }}>{p.pred_home}–{p.pred_away}</span>
         {(oc === 'exact' || oc === 'dir') ? (

@@ -536,7 +536,7 @@ export default function MatchCard({ match, onPredictionSaved }) {
                           ) : (
                             <>
                               <span style={{
-                                fontSize: '13px', fontWeight: 600, direction: 'ltr', fontVariantNumeric: 'tabular-nums',
+                                fontSize: '13px', fontWeight: 600, fontVariantNumeric: 'tabular-nums',
                                 color: r.oc === 'exact' ? '#1ede62' : r.oc === 'dir' ? '#f5c842' : 'rgba(255,255,255,.45)',
                               }}>{r.home_score}–{r.away_score}</span>
                               <span style={{
