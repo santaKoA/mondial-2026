@@ -29,7 +29,7 @@ function TeamFlag({ team }) {
           position: 'absolute', bottom: '-7px', right: '50%', transform: 'translateX(50%)',
           background: '#fff', color: '#1a1a1a', fontSize: '9px', fontWeight: 700,
           padding: '1px 7px', borderRadius: '100px', whiteSpace: 'nowrap',
-        }}>פיפא {meta.fifa}</span>
+        }}>{meta.fifa}</span>
       </div>
       <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{team.name}</div>
     </div>
