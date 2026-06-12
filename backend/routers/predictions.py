@@ -115,6 +115,71 @@ def group_predictions(
     return result
 
 
+@router.get("/user/{user_id}")
+def user_predictions(
+    user_id: int,
+    current_user: models.User = Depends(auth_utils.get_current_user),
+    db: Session = Depends(get_db),
+):
+    """All predictions of a user for matches that already kicked off — feeds
+    the public profile page. Future predictions stay hidden (same privacy
+    rule as group predictions)."""
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="משתמש לא נמצא")
+
+    # Visible only to members sharing a group with the target (or admin/self)
+    if user_id != current_user.id and not current_user.is_admin:
+        my_groups = {
+            ug.group_id for ug in
+            db.query(models.UserGroup).filter(models.UserGroup.user_id == current_user.id).all()
+        }
+        their_groups = {
+            ug.group_id for ug in
+            db.query(models.UserGroup).filter(models.UserGroup.user_id == user_id).all()
+        }
+        if not (my_groups & their_groups):
+            raise HTTPException(status_code=403, detail="אין הרשאה לצפות במשתמש זה")
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    preds = (
+        db.query(models.Prediction)
+        .join(models.Match, models.Prediction.match_id == models.Match.id)
+        .filter(
+            models.Prediction.user_id == user_id,
+            models.Match.is_test == False,
+        )
+        .all()
+    )
+    started = [
+        p for p in preds
+        if p.match.status in ("live", "finished") or p.match.scheduled_at <= now
+    ]
+    started.sort(key=lambda p: p.match.scheduled_at, reverse=True)
+
+    return {
+        "user_name": target.name,
+        "predictions": [
+            {
+                "match_id": p.match.id,
+                "stage": p.match.stage,
+                "status": p.match.status,
+                "scheduled_at": p.match.scheduled_at.isoformat(),
+                "home_team": p.match.home_team.name if p.match.home_team else None,
+                "home_flag": p.match.home_team.flag if p.match.home_team else None,
+                "away_team": p.match.away_team.name if p.match.away_team else None,
+                "away_flag": p.match.away_team.flag if p.match.away_team else None,
+                "home_score": p.match.home_score,
+                "away_score": p.match.away_score,
+                "pred_home": p.home_score,
+                "pred_away": p.away_score,
+                "points": p.points,
+            }
+            for p in started
+        ],
+    }
+
+
 @router.get("/my", response_model=list[schemas.PredictionOut])
 def my_predictions(
     current_user: models.User = Depends(auth_utils.get_current_user),

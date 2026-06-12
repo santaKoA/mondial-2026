@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
@@ -28,6 +29,7 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
   const [users, setUsers] = useState(null)
   const [removing, setRemoving] = useState(null)
   const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get(`/api/leaderboard?group_id=${group.id}`)
@@ -120,11 +122,12 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
 
             {/* Name + progress bar */}
             <div style={{ flex: 1, margin: '0 10px', minWidth: 0 }}>
-              <div style={{
+              <div onClick={() => navigate(`/user/${user.id}?group=${group.id}`)} style={{
                 fontSize: '14px', fontWeight: user.id === me?.id ? 700 : 500,
                 color: user.id === me?.id ? '#1ede62' : '#ecf0ed',
                 display: 'flex', alignItems: 'center', gap: '4px',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                cursor: 'pointer',
               }}>
                 {user.name}
                 {user.id === me?.id && <span style={{ fontSize: '10px', opacity: .5, fontWeight: 400 }}>(אני)</span>}

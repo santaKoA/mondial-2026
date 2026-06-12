@@ -5,6 +5,7 @@ import JoinPage from './pages/JoinPage'
 import MatchesPage from './pages/MatchesPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import SpecialPredictionsPage from './pages/SpecialPredictionsPage'
+import UserProfilePage from './pages/UserProfilePage'
 import AdminPage from './pages/AdminPage'
 
 function PrivateRoute({ children }) {
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/" element={<PrivateRoute><MatchesPage /></PrivateRoute>} />
           <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
           <Route path="/special" element={<PrivateRoute><SpecialPredictionsPage /></PrivateRoute>} />
+          <Route path="/user/:userId" element={<PrivateRoute><UserProfilePage /></PrivateRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
