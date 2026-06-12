@@ -434,29 +434,92 @@ export default function MatchCard({ match, onPredictionSaved }) {
               <span>{loadingGroup ? '...' : groupPreds ? 'הסתר ניחושי הקבוצה' : 'ניחושי הקבוצה'}</span>
               <span style={{ fontSize: '10px' }}>{groupPreds ? '▲' : '▼'}</span>
             </button>
-            {groupPreds && (
-              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {groupPreds.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 2px' }}>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.55)' }}>{p.user_name}</span>
-                    {p.home_score != null ? (
-                      <span style={{
-                        fontSize: '12px', fontWeight: 600,
-                        color: p.points != null
-                          ? p.points >= (STAGE_POINTS[match.stage]?.exact || 3) ? '#1ede62'
-                          : p.points > 0 ? '#f5c842' : 'rgba(255,255,255,.5)'
-                          : 'rgba(255,255,255,.6)',
-                      }}>
-                        {p.home_score}–{p.away_score}
-                        {p.points != null && <span style={{ color: 'rgba(255,255,255,.3)', marginRight: '4px' }}> ({p.points}נק)</span>}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '12px', color: 'rgba(240,74,90,.5)' }}>לא הוגש</span>
-                    )}
+            {groupPreds && (() => {
+              // Outcome vs the current (live or final) score
+              const sign = x => (x > 0 ? 1 : x < 0 ? -1 : 0)
+              const outcome = p => {
+                if (p.home_score == null) return 'none'
+                if (match.home_score == null || match.away_score == null) return 'pending'
+                if (p.home_score === match.home_score && p.away_score === match.away_score) return 'exact'
+                if (sign(p.home_score - p.away_score) === sign(match.home_score - match.away_score)) return 'dir'
+                return 'miss'
+              }
+              const ORDER = { exact: 0, dir: 1, pending: 2, miss: 3, none: 4 }
+              const rows = [...groupPreds].map(p => ({ ...p, oc: outcome(p) }))
+                .sort((a, b) => ORDER[a.oc] - ORDER[b.oc] || a.user_name.localeCompare(b.user_name, 'he'))
+              const counts = {
+                exact: rows.filter(r => r.oc === 'exact').length,
+                dir:   rows.filter(r => r.oc === 'dir').length,
+                miss:  rows.filter(r => r.oc === 'miss' || r.oc === 'pending').length,
+              }
+              const ROW_STYLE = {
+                exact:   { bg: 'rgba(30,222,98,.07)',  border: '1px solid rgba(30,222,98,.25)' },
+                dir:     { bg: 'rgba(245,200,66,.06)', border: '1px solid rgba(245,200,66,.22)' },
+                miss:    { bg: 'rgba(255,255,255,.025)', border: '1px solid rgba(255,255,255,.06)' },
+                pending: { bg: 'rgba(255,255,255,.025)', border: '1px solid rgba(255,255,255,.06)' },
+                none:    { bg: 'rgba(240,74,90,.04)',  border: '1px dashed rgba(240,74,90,.25)' },
+              }
+              const AVATAR = {
+                exact: { bg: 'rgba(30,222,98,.15)',  color: '#1ede62' },
+                dir:   { bg: 'rgba(245,200,66,.15)', color: '#f5c842' },
+                miss:  { bg: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)' },
+                pending: { bg: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)' },
+                none:  { bg: 'rgba(240,74,90,.1)',   color: 'rgba(240,74,90,.7)' },
+              }
+              const ptsLabel = r => {
+                const v = r.points != null ? r.points : (r.oc === 'exact' ? pts.exact : r.oc === 'dir' ? pts.dir : 0)
+                if (r.oc === 'exact') return { text: `${v}+ בול`,  bg: '#1ede62',              color: '#04342c' }
+                if (r.oc === 'dir')   return { text: `${v}+ כיוון`, bg: 'rgba(245,200,66,.9)', color: '#412402' }
+                return { text: '0', bg: 'transparent', color: 'rgba(255,255,255,.3)' }
+              }
+              return (
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '100px', background: 'rgba(30,222,98,.12)', color: '#1ede62' }}>{counts.exact} בול</span>
+                    <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '100px', background: 'rgba(245,200,66,.12)', color: '#f5c842' }}>{counts.dir} כיוון</span>
+                    <span style={{ fontSize: '11px', padding: '2px 9px', borderRadius: '100px', background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.45)' }}>{counts.miss} החטיאו</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {rows.map((r, i) => {
+                      const rs = ROW_STYLE[r.oc], av = AVATAR[r.oc]
+                      const pl = ptsLabel(r)
+                      return (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          background: rs.bg, border: rs.border, borderRadius: '10px', padding: '7px 10px',
+                        }}>
+                          <div style={{
+                            width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+                            background: av.bg, color: av.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '12px', fontWeight: 600,
+                          }}>{r.user_name.charAt(0)}</div>
+                          <span style={{
+                            flex: 1, fontSize: '13px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            color: r.oc === 'exact' ? '#ecf0ed' : r.oc === 'none' ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.7)',
+                            fontWeight: r.oc === 'exact' ? 600 : 400,
+                          }}>{r.user_name}</span>
+                          {r.oc === 'none' ? (
+                            <span style={{ fontSize: '11px', color: 'rgba(240,74,90,.6)' }}>לא הוגש</span>
+                          ) : (
+                            <>
+                              <span style={{
+                                fontSize: '13px', fontWeight: 600, direction: 'ltr', fontVariantNumeric: 'tabular-nums',
+                                color: r.oc === 'exact' ? '#1ede62' : r.oc === 'dir' ? '#f5c842' : 'rgba(255,255,255,.45)',
+                              }}>{r.home_score}–{r.away_score}</span>
+                              <span style={{
+                                fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '100px',
+                                background: pl.bg, color: pl.color, whiteSpace: 'nowrap',
+                              }}>{pl.text}</span>
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
           </>
         ) : (
           <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,.18)' }}>
