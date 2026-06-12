@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 import { WC_PLAYERS } from '../data/worldcup.js'
+import { getTeamMeta } from '../data/teamMeta'
 
 const PLAYER_MAP = Object.fromEntries(WC_PLAYERS.map(p => [p.name, p]))
 
@@ -88,7 +89,7 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🎯</div>
           <div style={{ width: '24px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>↗</div>
-          <div style={{ width: '22px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🏆</div>
+          <div style={{ width: '26px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>🏆</div>
           <div style={{ width: '36px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>⚽</div>
           <div style={{ width: '40px', textAlign: 'center', fontSize: '10px', color: 'rgba(255,255,255,.22)' }}>נק׳</div>
           {isOwner && <div style={{ width: '24px' }} />}
@@ -160,8 +161,20 @@ function GroupTable({ group, isOwner, me, teamFlags, onRemoveMember }) {
                 color: user.direction_count > 0 ? '#f5c842' : 'rgba(255,255,255,.2)',
               }}>{user.direction_count}</div>
               {/* Winner flag */}
-              <div style={{ width: '22px', textAlign: 'center', fontSize: '18px', flexShrink: 0 }}>
-                {user.winner_pick ? (teamFlags[user.winner_pick] || user.winner_pick) : '—'}
+              <div style={{ width: '26px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                {user.winner_pick ? (
+                  getTeamMeta(user.winner_pick) ? (
+                    <span className={`fi fi-${getTeamMeta(user.winner_pick).code}`} title={user.winner_pick} style={{
+                      display: 'block', width: '22px', height: '22px', borderRadius: '50%',
+                      backgroundSize: 'cover', backgroundPosition: 'center',
+                      border: '1.5px solid rgba(255,255,255,.25)', flexShrink: 0,
+                    }} />
+                  ) : (
+                    <span style={{ fontSize: '18px' }}>{teamFlags[user.winner_pick] || user.winner_pick}</span>
+                  )
+                ) : (
+                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,.3)' }}>—</span>
+                )}
               </div>
               {/* Top scorer - avatar */}
               <div style={{ width: '36px', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
