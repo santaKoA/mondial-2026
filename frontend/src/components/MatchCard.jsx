@@ -1,6 +1,40 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../api'
+import { getTeamMeta } from '../data/teamMeta'
+
+function TeamFlag({ team }) {
+  const meta = team ? getTeamMeta(team.name) : null
+  if (!meta) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{
+          width: '58px', height: '58px', borderRadius: '50%', marginBottom: '12px',
+          background: 'rgba(255,255,255,.05)', border: '2px solid rgba(255,255,255,.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px',
+        }}>{team?.flag || '🏳'}</div>
+        <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{team?.name || 'טרם נקבע'}</div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <span className={`fi fi-${meta.code}`} style={{
+          display: 'block', width: '58px', height: '58px', borderRadius: '50%',
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          border: '2px solid rgba(255,255,255,.25)',
+        }} />
+        <span style={{
+          position: 'absolute', bottom: '-7px', right: '50%', transform: 'translateX(50%)',
+          background: '#fff', color: '#1a1a1a', fontSize: '9px', fontWeight: 700,
+          padding: '1px 7px', borderRadius: '100px', whiteSpace: 'nowrap',
+        }}>פיפא {meta.fifa}</span>
+      </div>
+      <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{team.name}</div>
+    </div>
+  )
+}
 
 const H24 = 24 * 3600 * 1000
 const H1  =      3600 * 1000
@@ -331,9 +365,8 @@ export default function MatchCard({ match, onPredictionSaved }) {
       </div>
 
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '46px', lineHeight: 1, marginBottom: '7px' }}>{match.home_team?.flag || '🏳'}</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{match.home_team?.name || 'טרם נקבע'}</div>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <TeamFlag team={match.home_team} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '9px', minWidth: '152px' }}>
@@ -413,9 +446,8 @@ export default function MatchCard({ match, onPredictionSaved }) {
           )}
         </div>
 
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '46px', lineHeight: 1, marginBottom: '7px' }}>{match.away_team?.flag || '🏳'}</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.25 }}>{match.away_team?.name || 'טרם נקבע'}</div>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <TeamFlag team={match.away_team} />
         </div>
       </div>
 
