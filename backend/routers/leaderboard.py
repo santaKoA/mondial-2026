@@ -57,7 +57,8 @@ def _build_leaderboard(users: list[models.User], current_user_id: int, reveal_ot
                 top_scorer_pick=top_scorer_pick if show_special else None,
             )
         )
-    result.sort(key=lambda u: (-u.total_points, u.name))
+    # Points desc → exact hits desc (tiebreaker) → name asc
+    result.sort(key=lambda u: (-u.total_points, -u.exact_count, u.name))
     return result
 
 
