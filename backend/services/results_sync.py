@@ -455,6 +455,8 @@ async def sync_live_espn() -> int:
             date_set.add(d)
             prev = (m.scheduled_at - timedelta(days=1)).strftime("%Y%m%d")
             date_set.add(prev)
+            nxt = (m.scheduled_at + timedelta(days=1)).strftime("%Y%m%d")
+            date_set.add(nxt)
 
         data: dict = {"events": []}
         try:
