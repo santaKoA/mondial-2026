@@ -445,9 +445,11 @@ async def sync_live_espn() -> int:
             for m in live_matches
         }
 
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        espn_url = f"{ESPN_SCOREBOARD_URL}?dates={today}"
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(ESPN_SCOREBOARD_URL)
+                resp = await client.get(espn_url)
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
