@@ -445,13 +445,26 @@ async def sync_live_espn() -> int:
             for m in live_matches
         }
 
-        today = datetime.now(timezone.utc).strftime("%Y%m%d")
-        espn_url = f"{ESPN_SCOREBOARD_URL}?dates={today}"
+        # Collect all unique kickoff dates for live matches (in UTC).
+        # Also include the day before each kickoff to handle matches that start
+        # near midnight UTC — ESPN may bucket them under the previous calendar
+        # day in its US-based timezone.
+        date_set = set()
+        for m in live_matches:
+            d = m.scheduled_at.strftime("%Y%m%d")
+            date_set.add(d)
+            prev = (m.scheduled_at - timedelta(days=1)).strftime("%Y%m%d")
+            date_set.add(prev)
+
+        data: dict = {"events": []}
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(espn_url)
-            resp.raise_for_status()
-            data = resp.json()
+                for date_str in date_set:
+                    url = f"{ESPN_SCOREBOARD_URL}?dates={date_str}"
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    day_data = resp.json()
+                    data["events"].extend(day_data.get("events", []))
         except Exception as e:
             logger.warning(f"ESPN live sync error: {e}")
             return 0
