@@ -42,7 +42,7 @@ export default function MatchesPage() {
   const initialTabRef = useRef(searchParams.get('tab'))
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState(initialTabRef.current || (isTournamentDay() ? 'today' : 'all'))
+  const [activeStage, setActiveStage] = useState(initialTabRef.current || (isTournamentDay() ? 'soon' : 'all'))
   const [activeGroup, setActiveGroup] = useState(null)
   const initializedRef = useRef(false)
 
