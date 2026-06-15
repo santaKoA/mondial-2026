@@ -42,7 +42,7 @@ export default function MatchesPage() {
   const initialTabRef = useRef(searchParams.get('tab'))
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeStage, setActiveStage] = useState(initialTabRef.current || (isTournamentDay() ? 'today' : 'all'))
+  const [activeStage, setActiveStage] = useState(initialTabRef.current || (isTournamentDay() ? 'soon' : 'all'))
   const [activeGroup, setActiveGroup] = useState(null)
   const initializedRef = useRef(false)
 
@@ -79,16 +79,24 @@ export default function MatchesPage() {
 
   const todayMatches = matches.filter(m => israelDateStr(toUtcDate(m.scheduled_at)) === todayIsrael())
 
+  const soonMatches = matches.filter(m => {
+    const t = toUtcDate(m.scheduled_at)
+    const now = new Date()
+    return t > now && t <= new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  })
+
   const filteredByStage = matches.filter(m => m.stage === activeStage)
   const groups = [...new Set(filteredByStage.map(m => m.group_name).filter(Boolean))].sort()
 
-  const displayed = activeStage === 'today'
-    ? todayMatches
-    : activeStage === 'all'
-      ? matches
-      : activeStage === 'group' && activeGroup
-        ? filteredByStage.filter(m => m.group_name === activeGroup)
-        : filteredByStage
+  const displayed = activeStage === 'soon'
+    ? soonMatches
+    : activeStage === 'today'
+      ? todayMatches
+      : activeStage === 'all'
+        ? matches
+        : activeStage === 'group' && activeGroup
+          ? filteredByStage.filter(m => m.group_name === activeGroup)
+          : filteredByStage
 
   useEffect(() => {
     if (activeStage === 'group' && groups.length > 0 && !groups.includes(activeGroup)) {
@@ -128,6 +136,7 @@ export default function MatchesPage() {
 
       {/* Stage tabs */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '12px', scrollbarWidth: 'none' }}>
+        {tabBtn('soon', `⏰ הקרובים${soonMatches.length > 0 ? ` (${soonMatches.length})` : ''}`, () => setActiveStage('soon'))}
         {tabBtn('today', '📅 היום', () => setActiveStage('today'))}
         {tabBtn('all', '🗓 הכל', () => setActiveStage('all'))}
         {stages.map(stage => tabBtn(stage, STAGE_LABELS[stage] || stage, () => { setActiveStage(stage); setActiveGroup(null) }))}
@@ -150,7 +159,7 @@ export default function MatchesPage() {
 
       {displayed.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '64px 0', color: 'rgba(255,255,255,.25)', fontSize: '14px' }}>
-          {activeStage === 'today' ? 'אין משחקים היום' : activeStage === 'all' ? 'אין משחקים' : 'אין משחקים בשלב זה'}
+          {activeStage === 'soon' ? 'אין משחקים ב-24 השעות הקרובות' : activeStage === 'today' ? 'אין משחקים היום' : activeStage === 'all' ? 'אין משחקים' : 'אין משחקים בשלב זה'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
