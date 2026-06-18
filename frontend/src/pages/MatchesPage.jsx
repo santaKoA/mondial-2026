@@ -80,6 +80,7 @@ export default function MatchesPage() {
   const todayMatches = matches.filter(m => israelDateStr(toUtcDate(m.scheduled_at)) === todayIsrael())
 
   const soonMatches = matches.filter(m => {
+    if (m.status === 'live') return true
     const t = toUtcDate(m.scheduled_at)
     const now = new Date()
     return t > now && t <= new Date(now.getTime() + 24 * 60 * 60 * 1000)
