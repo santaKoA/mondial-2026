@@ -255,8 +255,10 @@ export default function JoinPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {[
             ['שלב בתים', '3נק', '1נק'],
-            ['שמינית / רבע גמר', '5נק', '3נק'],
-            ['חצי / גמר', '10נק', '5נק'],
+            ['שלב 32 / שמינית גמר', '5נק', '3נק'],
+            ['רבע גמר', '6נק', '4נק'],
+            ['חצי / מקום שלישי', '10נק', '5נק'],
+            ['גמר', '15נק', '8נק'],
           ].map(([s, ex, dir]) => (
             <div key={s} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)' }}>{s}</span>
