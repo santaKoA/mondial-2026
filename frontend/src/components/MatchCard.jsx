@@ -430,15 +430,26 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 <span style={{ fontSize: '20px', color: 'rgba(255,255,255,.18)', fontWeight: 300 }}>–</span>
                 <ScoreBox value={away} onChange={setAway} side="l" />
               </div>
-              <button onClick={handleSave} disabled={saving || home === '' || away === ''} style={{
-                background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
-                fontWeight: 700, fontSize: '13px', padding: '8px 0', width: '100%',
-                borderRadius: '9px', border: 'none', cursor: saving || home === '' || away === '' ? 'default' : 'pointer',
-                boxShadow: '0 2px 14px rgba(30,222,98,.22)',
-                opacity: home === '' || away === '' ? 0.4 : 1, transition: 'opacity .15s',
-              }}>
-                {saving ? '...' : pred ? '✏️ עדכן ניחוש' : '💾 שמור ניחוש'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                <button onClick={() => {
+                  const scores = []
+                  for (let h = 0; h <= 4; h++) for (let a = 0; a <= 4; a++) scores.push([h, a])
+                  const [h, a] = scores[Math.floor(Math.random() * scores.length)]
+                  setHome(h); setAway(a)
+                }} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px',
+                  padding: '0 2px', lineHeight: 1, flexShrink: 0,
+                }}>🎲</button>
+                <button onClick={handleSave} disabled={saving || home === '' || away === ''} style={{
+                  background: '#1ede62', color: '#000', fontFamily: 'Heebo, sans-serif',
+                  fontWeight: 700, fontSize: '13px', padding: '8px 0', flex: 1,
+                  borderRadius: '9px', border: 'none', cursor: saving || home === '' || away === '' ? 'default' : 'pointer',
+                  boxShadow: '0 2px 14px rgba(30,222,98,.22)',
+                  opacity: home === '' || away === '' ? 0.4 : 1, transition: 'opacity .15s',
+                }}>
+                  {saving ? '...' : pred ? '✏️ עדכן ניחוש' : '💾 שמור ניחוש'}
+                </button>
+              </div>
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,.28)' }}>
                 מדויק {pts.exact}נק · כיוון {pts.dir}נק
               </span>
