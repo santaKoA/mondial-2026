@@ -64,6 +64,8 @@ def list_matches(
             away_team=schemas.TeamOut.model_validate(m.away_team) if m.away_team else None,
             home_score=m.home_score,
             away_score=m.away_score,
+            score_90_home=m.score_90_home,
+            score_90_away=m.score_90_away,
             status=m.status,
             my_prediction=schemas.PredictionOut.model_validate(p) if p else None,
         ))

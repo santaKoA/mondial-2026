@@ -101,8 +101,12 @@ def _to_hebrew(name: str) -> str | None:
     return TEAM_NAME_MAP.get(name)
 
 
-def _apply_result(db, match: models.Match, home_score: int, away_score: int, finished: bool = True) -> bool:
-    """Update match score. If finished=True, also calculates points. Returns True if changed."""
+def _apply_result(
+    db, match: models.Match, home_score: int, away_score: int,
+    finished: bool = True, pts_home: int | None = None, pts_away: int | None = None,
+) -> bool:
+    """Update match score. If finished=True, also calculates points. Returns True if changed.
+    pts_home/pts_away override the score used for points (ET/pen knockout case)."""
     new_status = "finished" if finished else "live"
 
     if (match.home_score == home_score and match.away_score == away_score
@@ -114,10 +118,12 @@ def _apply_result(db, match: models.Match, home_score: int, away_score: int, fin
     match.status = new_status
 
     if finished:
+        score_home = pts_home if pts_home is not None else home_score
+        score_away = pts_away if pts_away is not None else away_score
         predictions = db.query(models.Prediction).filter(models.Prediction.match_id == match.id).all()
         for pred in predictions:
             pred.points = scoring.calculate_points(
-                match.stage, home_score, away_score, pred.home_score, pred.away_score
+                match.stage, score_home, score_away, pred.home_score, pred.away_score
             )
         if match.stage == 'group' and match.group_name:
             import threading
@@ -482,7 +488,10 @@ async def sync_live_espn() -> int:
         updated = 0
         for e in data.get("events", []):
             comp = e.get("competitions", [{}])[0]
-            state = comp.get("status", {}).get("type", {}).get("state")
+            status_info = comp.get("status", {})
+            state = status_info.get("type", {}).get("state")
+            status_name = status_info.get("type", {}).get("name", "")
+            period = status_info.get("period", 0)
             if state not in ("in", "post"):
                 continue
             home_heb = away_heb = None
@@ -508,11 +517,32 @@ async def sync_live_espn() -> int:
                     updated += 1
                     logger.info(f"ESPN finalized group match {match.id}: {home_score}-{away_score}")
             elif state == "in":
+                changed = False
                 if match.home_score != home_score or match.away_score != away_score:
                     match.home_score = home_score
                     match.away_score = away_score
+                    changed = True
+                # Capture 90-min score the moment ET begins for knockout matches
+                if match.stage != "group" and period >= 3 and match.score_90_home is None:
+                    match.score_90_home = home_score
+                    match.score_90_away = away_score
+                    changed = True
+                    logger.info(f"ESPN saved 90-min score for knockout match {match.id}: {home_score}-{away_score}")
+                if changed:
                     updated += 1
-            # state == 'post' on a knockout match: leave for football-data
+            elif state == "post" and match.stage != "group":
+                # Knockout final result via ESPN
+                if match.status != "finished":
+                    # For ET/pens, score_90 was captured during live; use it for points
+                    pts_home = match.score_90_home if match.score_90_home is not None else home_score
+                    pts_away = match.score_90_away if match.score_90_away is not None else away_score
+                    if _apply_result(db, match, home_score, away_score, finished=True,
+                                     pts_home=pts_home, pts_away=pts_away):
+                        updated += 1
+                        logger.info(
+                            f"ESPN finalized knockout match {match.id}: {home_score}-{away_score} "
+                            f"(pts from 90min: {pts_home}-{pts_away}, status: {status_name})"
+                        )
         if updated:
             db.commit()
             logger.info(f"ESPN live: updated {updated} match(es)")

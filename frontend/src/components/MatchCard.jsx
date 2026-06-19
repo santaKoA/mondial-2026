@@ -381,6 +381,16 @@ export default function MatchCard({ match, onPredictionSaved }) {
                 <span style={{ fontSize: '22px', color: live ? '#f04a58' : 'rgba(255,255,255,.2)', fontWeight: 300 }}>–</span>
                 <span style={{ fontSize: '44px', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{match.away_score}</span>
               </div>
+              {match.score_90_home != null && match.stage !== 'group' && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
+                  borderRadius: '100px', padding: '3px 10px',
+                }}>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,.4)' }}>90'</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,.55)' }}>{match.score_90_home}–{match.score_90_away}</span>
+                </div>
+              )}
               {pred && fin && rc && (
                 <span style={{
                   fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '100px',

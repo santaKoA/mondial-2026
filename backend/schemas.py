@@ -22,6 +22,8 @@ class MatchOut(BaseModel):
     away_team: Optional[TeamOut]
     home_score: Optional[int]
     away_score: Optional[int]
+    score_90_home: Optional[int] = None
+    score_90_away: Optional[int] = None
     status: str
     my_prediction: Optional["PredictionOut"] = None
 

@@ -44,6 +44,8 @@ class Match(Base):
     scheduled_at = Column(DateTime, nullable=False)
     home_score = Column(Integer, nullable=True)
     away_score = Column(Integer, nullable=True)
+    score_90_home = Column(Integer, nullable=True)
+    score_90_away = Column(Integer, nullable=True)
     status = Column(String, nullable=False, default="upcoming")
     # Test match fields
     is_test = Column(Boolean, nullable=False, default=False)
