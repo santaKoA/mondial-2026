@@ -12,6 +12,7 @@ from database import SessionLocal
 import models
 import scoring
 from config import settings
+from services.bracket_filler import fill_bracket_for_group
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,13 @@ def _apply_result(db, match: models.Match, home_score: int, away_score: int, fin
             pred.points = scoring.calculate_points(
                 match.stage, home_score, away_score, pred.home_score, pred.away_score
             )
+        if match.stage == 'group' and match.group_name:
+            import threading
+            threading.Thread(
+                target=fill_bracket_for_group,
+                args=(match.group_name,),
+                daemon=True,
+            ).start()
     return True
 
 
