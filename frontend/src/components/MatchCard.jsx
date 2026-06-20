@@ -397,13 +397,13 @@ export default function MatchCard({ match, onPredictionSaved }) {
                   background: rcP[rc].bg, color: rcP[rc].text, border: `1px solid ${rcP[rc].border}`,
                 }}>
                   {rc === 'green' ? '🎯 בול! ' : rc === 'yellow' ? '↗ כיוון ' : '✗ '}
-                  {pred.home_score}–{pred.away_score}
+                  {pred.is_random ? '🎲 ' : ''}{pred.home_score}–{pred.away_score}
                   {pred.points != null ? ` · +${pred.points}נק` : ''}
                 </span>
               )}
               {pred && live && (
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>
-                  ניחושך: {pred.home_score}–{pred.away_score}
+                  {pred.is_random ? '🎲 ' : ''}ניחושך: {pred.home_score}–{pred.away_score}
                 </div>
               )}
             </>
@@ -419,7 +419,9 @@ export default function MatchCard({ match, onPredictionSaved }) {
                   <span style={{ fontSize: '20px', color: 'rgba(245,200,66,.4)', fontWeight: 300 }}>–</span>
                   <span style={{ fontSize: '40px', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: '#f5c842' }}>{pred.away_score}</span>
                 </div>
-                <div style={{ fontSize: '11px', color: 'rgba(245,200,66,.6)', marginTop: '7px' }}>🔒 הניחוש נעול</div>
+                <div style={{ fontSize: '11px', color: 'rgba(245,200,66,.6)', marginTop: '7px' }}>
+                  {pred.is_random ? '🎲 הוגרל אוטומטית' : '🔒 הניחוש נעול'}
+                </div>
               </div>
             ) : (
               <div style={{ textAlign: 'center' }}>

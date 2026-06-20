@@ -85,6 +85,7 @@ class Prediction(Base):
     home_score = Column(Integer, nullable=False)
     away_score = Column(Integer, nullable=False)
     points = Column(Integer, nullable=True)
+    is_random = Column(Boolean, nullable=False, default=False)
     submitted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

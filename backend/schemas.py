@@ -41,6 +41,7 @@ class PredictionOut(BaseModel):
     home_score: int
     away_score: int
     points: Optional[int]
+    is_random: bool = False
     submitted_at: datetime
     updated_at: datetime
 

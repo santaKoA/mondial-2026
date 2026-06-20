@@ -377,6 +377,7 @@ def _mark_kicked_off_matches():
     Set status='live' and score=0-0 for any match whose kickoff has passed
     but is still 'upcoming'. No API call — pure time-based.
     """
+    import random as _random
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -390,6 +391,30 @@ def _mark_kicked_off_matches():
                 m.status = "live"
                 m.home_score = 0
                 m.away_score = 0
+
+                # Auto-fill random predictions for users who haven't submitted
+                all_user_ids = [u.id for u in db.query(models.User).filter(
+                    models.User.is_admin == False,
+                ).all()]
+                existing_pred_user_ids = {
+                    p.user_id for p in db.query(models.Prediction).filter(
+                        models.Prediction.match_id == m.id,
+                    ).all()
+                }
+                all_scores = [(h, a) for h in range(5) for a in range(5)]
+                for uid in all_user_ids:
+                    if uid in existing_pred_user_ids:
+                        continue  # never overwrite an existing prediction
+                    h, a = _random.choice(all_scores)
+                    db.add(models.Prediction(
+                        user_id=uid,
+                        match_id=m.id,
+                        home_score=h,
+                        away_score=a,
+                        is_random=True,
+                    ))
+                    logger.info(f"Auto-random prediction for user {uid} match {m.id}: {h}-{a}")
+
             db.commit()
             logger.info(f"Marked {len(just_kicked)} match(es) as live 0-0")
     finally:
