@@ -419,14 +419,6 @@ export default function AdminPage() {
               ) : (
                 <span>{syncStatus.api_configured ? 'טרם סונכרן' : 'API לא מוגדר'}</span>
               )}
-              {syncStatus.unlinked_count > 0 && (
-                <details style={{ cursor: 'pointer' }}>
-                  <summary style={{ color: '#fb923c' }}>⚠️ {syncStatus.unlinked_count} משחקים ללא fixture_id</summary>
-                  <ul style={{ marginTop: '4px', paddingRight: '8px', color: 'rgba(255,255,255,.4)' }}>
-                    {syncStatus.unlinked_matches?.map(m => <li key={m}>· {m}</li>)}
-                  </ul>
-                </details>
-              )}
             </div>
           )}
           {[
