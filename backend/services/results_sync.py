@@ -125,13 +125,6 @@ def _apply_result(
             pred.points = scoring.calculate_points(
                 match.stage, score_home, score_away, pred.home_score, pred.away_score
             )
-        if match.stage == 'group' and match.group_name:
-            import threading
-            threading.Thread(
-                target=fill_bracket_for_group,
-                args=(match.group_name,),
-                daemon=True,
-            ).start()
     return True
 
 
@@ -199,6 +192,7 @@ async def sync_results() -> dict:
     scores_updated = 0
     teams_assigned = 0
     unknown_teams: list[str] = []
+    groups_fd_finalized: set[str] = set()
 
     db = SessionLocal()
     try:
@@ -267,8 +261,12 @@ async def sync_results() -> dict:
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score, finished=True):
                         scores_updated += 1
+                        if match.stage == 'group' and match.group_name:
+                            groups_fd_finalized.add(match.group_name)
 
         db.commit()
+        for g in groups_fd_finalized:
+            fill_bracket_for_group(g)
     finally:
         db.close()
 
@@ -511,6 +509,7 @@ async def sync_live_espn() -> int:
             return 0
 
         updated = 0
+        groups_finalized: set[str] = set()
         for e in data.get("events", []):
             comp = e.get("competitions", [{}])[0]
             status_info = comp.get("status", {})
@@ -541,6 +540,8 @@ async def sync_live_espn() -> int:
                 if _apply_result(db, match, home_score, away_score, finished=True):
                     updated += 1
                     logger.info(f"ESPN finalized group match {match.id}: {home_score}-{away_score}")
+                    if match.group_name:
+                        groups_finalized.add(match.group_name)
             elif state == "in":
                 changed = False
                 if match.home_score != home_score or match.away_score != away_score:
@@ -571,6 +572,9 @@ async def sync_live_espn() -> int:
         if updated:
             db.commit()
             logger.info(f"ESPN live: updated {updated} match(es)")
+        # Fill bracket AFTER commit so the finished status is visible to fill_bracket_for_group
+        for g in groups_finalized:
+            fill_bracket_for_group(g)
         return updated
     finally:
         db.close()
