@@ -1,8 +1,8 @@
 STAGE_POINTS = {
     "group": {"exact": 3, "direction": 1},
-    "round_of_32": {"exact": 5, "direction": 3},
-    "round_of_16": {"exact": 5, "direction": 3},
-    "quarter_final": {"exact": 6, "direction": 4},
+    "round_of_32": {"exact": 6, "direction": 3},
+    "round_of_16": {"exact": 6, "direction": 3},
+    "quarter_final": {"exact": 6, "direction": 3},
     "semi_final": {"exact": 10, "direction": 5},
     "third_place": {"exact": 10, "direction": 5},
     "final": {"exact": 15, "direction": 8},

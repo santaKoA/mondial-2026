@@ -9,9 +9,9 @@ const MEDALS = ['🥇', '🥈', '🥉']
 
 const STAGE_POINTS = {
   group:         { exact: 3,  dir: 1 },
-  round_of_32:   { exact: 5,  dir: 3 },
-  round_of_16:   { exact: 5,  dir: 3 },
-  quarter_final: { exact: 6,  dir: 4 },
+  round_of_32:   { exact: 6,  dir: 3 },
+  round_of_16:   { exact: 6,  dir: 3 },
+  quarter_final: { exact: 6,  dir: 3 },
   semi_final:    { exact: 10, dir: 5 },
   third_place:   { exact: 10, dir: 5 },
   final:         { exact: 15, dir: 8 },
