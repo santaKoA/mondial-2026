@@ -12,7 +12,7 @@ from database import SessionLocal
 import models
 import scoring
 from config import settings
-from services.bracket_filler import fill_bracket_for_group
+from services.bracket_filler import fill_bracket_for_group, advance_knockout_winner
 
 logger = logging.getLogger(__name__)
 
@@ -510,6 +510,7 @@ async def sync_live_espn() -> int:
 
         updated = 0
         groups_finalized: set[str] = set()
+        knockout_finalized: list[tuple[int, int, int]] = []  # (match_id, home_score, away_score)
         for e in data.get("events", []):
             comp = e.get("competitions", [{}])[0]
             status_info = comp.get("status", {})
@@ -565,6 +566,7 @@ async def sync_live_espn() -> int:
                     if _apply_result(db, match, home_score, away_score, finished=True,
                                      pts_home=pts_home, pts_away=pts_away):
                         updated += 1
+                        knockout_finalized.append((match.id, home_score, away_score))
                         logger.info(
                             f"ESPN finalized knockout match {match.id}: {home_score}-{away_score} "
                             f"(pts from 90min: {pts_home}-{pts_away}, status: {status_name})"
@@ -575,6 +577,8 @@ async def sync_live_espn() -> int:
         # Fill bracket AFTER commit so the finished status is visible to fill_bracket_for_group
         for g in groups_finalized:
             fill_bracket_for_group(g)
+        for match_id, hs, as_ in knockout_finalized:
+            advance_knockout_winner(match_id, hs, as_)
         return updated
     finally:
         db.close()

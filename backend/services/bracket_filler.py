@@ -232,3 +232,75 @@ def _fill_third_place_slots(db: Session):
         _set_team(db, match_id, 'away', best['team_id'])
         assigned_groups.add(best['group'])
         logger.info(f"3rd-place slot match {match_id}: group {best['group']} team {best['team_id']}")
+
+
+# ---------------------------------------------------------------------------
+# Knockout bracket advancement: winner of match X → slot in match Y
+# (match_id_source) -> (match_id_dest, 'home'|'away')
+# ---------------------------------------------------------------------------
+KNOCKOUT_ADVANCEMENT: dict[int, tuple[int, str]] = {
+    # R32 → R16
+    73: (89, 'home'), 75: (89, 'away'),
+    77: (90, 'home'), 74: (90, 'away'),
+    78: (91, 'home'), 76: (91, 'away'),
+    79: (92, 'home'), 80: (92, 'away'),
+    84: (93, 'home'), 83: (93, 'away'),
+    82: (94, 'home'), 81: (94, 'away'),
+    88: (95, 'home'), 86: (95, 'away'),
+    85: (96, 'home'), 87: (96, 'away'),
+    # R16 → QF
+    89: (97, 'home'), 90: (97, 'away'),
+    93: (98, 'home'), 94: (98, 'away'),
+    91: (99, 'home'), 92: (99, 'away'),
+    95: (100, 'home'), 96: (100, 'away'),
+    # QF → SF
+    97: (101, 'home'), 98: (101, 'away'),
+    99: (102, 'home'), 100: (102, 'away'),
+    # SF → Final & 3rd place
+    101: (104, 'home'), 102: (104, 'away'),
+}
+# Losers of SF go to 3rd place match
+SF_LOSER_SLOTS: dict[int, tuple[int, str]] = {
+    101: (103, 'home'),
+    102: (103, 'away'),
+}
+
+
+def advance_knockout_winner(match_id: int, home_score: int, away_score: int):
+    """
+    Called after a knockout match finishes.
+    Advances the winner to the next bracket slot.
+    For SF losers, also fills the 3rd place match.
+    """
+    slot = KNOCKOUT_ADVANCEMENT.get(match_id)
+    if not slot:
+        return
+
+    db = SessionLocal()
+    try:
+        match = db.query(models.Match).filter(models.Match.id == match_id).first()
+        if not match:
+            return
+
+        if home_score > away_score:
+            winner_id = match.home_team_id
+            loser_id = match.away_team_id
+        elif away_score > home_score:
+            winner_id = match.away_team_id
+            loser_id = match.home_team_id
+        else:
+            return  # draw shouldn't happen in knockout after ET/pens
+
+        dest_match_id, side = slot
+        _set_team(db, dest_match_id, side, winner_id)
+        logger.info(f"Knockout advance: match {match_id} winner team {winner_id} → match {dest_match_id} {side}")
+
+        # SF loser → 3rd place
+        loser_slot = SF_LOSER_SLOTS.get(match_id)
+        if loser_slot and loser_id:
+            _set_team(db, loser_slot[0], loser_slot[1], loser_id)
+            logger.info(f"3rd place: match {match_id} loser team {loser_id} → match {loser_slot[0]} {loser_slot[1]}")
+
+        db.commit()
+    finally:
+        db.close()
