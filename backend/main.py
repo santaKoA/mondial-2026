@@ -81,32 +81,9 @@ def _run_startup_migrations():
         db.close()
 
 
-def _backfill_bracket():
-    """On startup, fill bracket slots for any complete groups that were missed."""
-    from services.bracket_filler import fill_bracket_for_group
-    import logging
-    logger = logging.getLogger(__name__)
-    all_groups = ['A','B','C','D','E','F','G','H','I','J','K','L']
-    db = SessionLocal()
-    try:
-        for g in all_groups:
-            done = db.query(models.Match).filter(
-                models.Match.group_name == g,
-                models.Match.stage == 'group',
-                models.Match.is_test == False,
-                models.Match.status == 'finished',
-            ).count()
-            if done >= 6:
-                fill_bracket_for_group(g)
-                logger.info(f"Startup bracket backfill: group {g}")
-    finally:
-        db.close()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _run_startup_migrations()
-    _backfill_bracket()
     task = asyncio.create_task(results_sync.polling_loop())
     yield
     task.cancel()
