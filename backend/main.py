@@ -84,6 +84,8 @@ def _run_startup_migrations():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _run_startup_migrations()
+    from services.bracket_filler import backfill_knockout_advancements
+    await backfill_knockout_advancements()
     task = asyncio.create_task(results_sync.polling_loop())
     yield
     task.cancel()

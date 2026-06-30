@@ -312,3 +312,102 @@ def advance_knockout_winner(match_id: int, home_score: int, away_score: int, win
         db.commit()
     finally:
         db.close()
+
+
+async def backfill_knockout_advancements():
+    """
+    Called once at startup (async). For every finished knockout match whose next
+    bracket slot is still empty, determines the winner and fills the slot.
+    For penalty/ET draws (equal score) re-queries ESPN to get the winner flag.
+    Safe to run repeatedly — only fills empty slots.
+    """
+    import httpx
+    from datetime import timedelta
+
+    ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
+
+    db = SessionLocal()
+    try:
+        team_names: dict[int, str] = {t.id: t.name for t in db.query(models.Team).all()}
+
+        # Build reverse map: Hebrew name → team id
+        name_to_id: dict[str, int] = {v: k for k, v in team_names.items()}
+
+        # Import here to avoid circular imports
+        from services.results_sync import _to_hebrew
+
+        for src_id, (dest_id, side) in KNOCKOUT_ADVANCEMENT.items():
+            src = db.query(models.Match).filter(models.Match.id == src_id).first()
+            if not src or src.status != 'finished':
+                continue
+            dest = db.query(models.Match).filter(models.Match.id == dest_id).first()
+            if not dest:
+                continue
+            # Skip if slot already filled
+            already_filled = dest.home_team_id if side == 'home' else dest.away_team_id
+            if already_filled is not None:
+                continue
+
+            hs, as_ = src.home_score, src.away_score
+            winner_id = loser_id = None
+
+            if hs is not None and as_ is not None and hs != as_:
+                # Clear winner from score
+                if hs > as_:
+                    winner_id, loser_id = src.home_team_id, src.away_team_id
+                else:
+                    winner_id, loser_id = src.away_team_id, src.home_team_id
+            else:
+                # Draw (ET/pens) — ask ESPN who won
+                dates = set()
+                d = src.scheduled_at
+                for delta in (-1, 0, 1):
+                    dates.add((d + timedelta(days=delta)).strftime("%Y%m%d"))
+                try:
+                    async with httpx.AsyncClient(timeout=15) as client:
+                        for date_str in dates:
+                            resp = await client.get(f"{ESPN_URL}?dates={date_str}")
+                            if resp.status_code != 200:
+                                continue
+                            for e in resp.json().get("events", []):
+                                comp = e.get("competitions", [{}])[0]
+                                state = comp.get("status", {}).get("type", {}).get("state")
+                                if state != "post":
+                                    continue
+                                competitors = comp.get("competitors", [])
+                                home_c = next((c for c in competitors if c.get("homeAway") == "home"), None)
+                                away_c = next((c for c in competitors if c.get("homeAway") == "away"), None)
+                                if not home_c or not away_c:
+                                    continue
+                                h_heb = _to_hebrew(home_c.get("team", {}).get("displayName", ""))
+                                a_heb = _to_hebrew(away_c.get("team", {}).get("displayName", ""))
+                                if (name_to_id.get(h_heb) == src.home_team_id and
+                                        name_to_id.get(a_heb) == src.away_team_id):
+                                    if home_c.get("winner"):
+                                        winner_id, loser_id = src.home_team_id, src.away_team_id
+                                    elif away_c.get("winner"):
+                                        winner_id, loser_id = src.away_team_id, src.home_team_id
+                                    break
+                            if winner_id:
+                                break
+                except Exception as exc:
+                    logger.warning(f"Backfill ESPN query failed for match {src_id}: {exc}")
+
+            if not winner_id:
+                logger.warning(f"Backfill: could not determine winner of match {src_id}, skipping")
+                continue
+
+            _set_team(db, dest_id, side, winner_id)
+            logger.info(f"Backfill: match {src_id} winner team {winner_id} → match {dest_id} {side}")
+
+            loser_slot = SF_LOSER_SLOTS.get(src_id)
+            if loser_slot and loser_id:
+                dest3 = db.query(models.Match).filter(models.Match.id == loser_slot[0]).first()
+                slot_filled = (dest3.home_team_id if loser_slot[1] == 'home' else dest3.away_team_id) if dest3 else None
+                if dest3 and slot_filled is None:
+                    _set_team(db, loser_slot[0], loser_slot[1], loser_id)
+
+        db.commit()
+        logger.info("Backfill knockout advancements complete")
+    finally:
+        db.close()
