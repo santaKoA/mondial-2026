@@ -331,7 +331,7 @@ async def backfill_knockout_advancements():
     db = SessionLocal()
     try:
         # Clear all unstarted R16+ team slots so wrong placements get corrected
-        for m in db.query(models.Match).filter(models.Match.round.in_(KNOCKOUT_ROUNDS)).all():
+        for m in db.query(models.Match).filter(models.Match.stage.in_(KNOCKOUT_ROUNDS)).all():
             if m.status == 'scheduled':
                 m.home_team_id = None
                 m.away_team_id = None
