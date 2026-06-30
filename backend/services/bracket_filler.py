@@ -239,24 +239,24 @@ def _fill_third_place_slots(db: Session):
 # (match_id_source) -> (match_id_dest, 'home'|'away')
 # ---------------------------------------------------------------------------
 KNOCKOUT_ADVANCEMENT: dict[int, tuple[int, str]] = {
-    # R32 → R16
-    73: (89, 'home'), 75: (89, 'away'),
-    77: (90, 'home'), 74: (90, 'away'),
-    78: (91, 'home'), 76: (91, 'away'),
-    79: (92, 'home'), 80: (92, 'away'),
-    84: (93, 'home'), 83: (93, 'away'),
-    82: (94, 'home'), 81: (94, 'away'),
-    88: (95, 'home'), 86: (95, 'away'),
-    85: (96, 'home'), 87: (96, 'away'),
+    # R32 → R16  (ESPN bracket confirmed Jun 30 2026)
+    73: (89, 'home'), 76: (89, 'away'),   # Canada + Morocco → R16 89
+    75: (90, 'home'), 78: (90, 'away'),   # Paraguay + France/Sweden → R16 90
+    74: (91, 'home'), 84: (91, 'away'),   # Brazil + Portugal/Croatia → R16 91
+    83: (92, 'home'), 82: (92, 'away'),   # Spain/Austria + USA/Bosnia → R16 92
+    79: (93, 'home'), 80: (93, 'away'),   # Mexico/Ecuador + England/Congo → R16 93
+    81: (94, 'home'), 77: (94, 'away'),   # Belgium/Senegal + Ivory Coast/Norway → R16 94
+    86: (95, 'home'), 88: (95, 'away'),   # Australia/Egypt + Colombia/Ghana → R16 95
+    87: (96, 'home'), 85: (96, 'away'),   # Argentina + Switzerland/Algeria → R16 96
     # R16 → QF
     89: (97, 'home'), 90: (97, 'away'),
-    93: (98, 'home'), 94: (98, 'away'),
     91: (99, 'home'), 92: (99, 'away'),
+    93: (98, 'home'), 94: (98, 'away'),
     95: (100, 'home'), 96: (100, 'away'),
-    # QF → SF
-    97: (101, 'home'), 98: (101, 'away'),
-    99: (102, 'home'), 100: (102, 'away'),
-    # SF → Final & 3rd place
+    # QF → SF  (left bracket: 97+99 → SF101; right bracket: 98+100 → SF102)
+    97: (101, 'home'), 99: (101, 'away'),
+    98: (102, 'home'), 100: (102, 'away'),
+    # SF → Final
     101: (104, 'home'), 102: (104, 'away'),
 }
 # Losers of SF go to 3rd place match
@@ -316,18 +316,28 @@ def advance_knockout_winner(match_id: int, home_score: int, away_score: int, win
 
 async def backfill_knockout_advancements():
     """
-    Called once at startup (async). For every finished knockout match whose next
-    bracket slot is still empty, determines the winner and fills the slot.
+    Called once at startup (async). Clears all unstarted R16+ bracket slots,
+    then re-fills them from finished R32+ matches. This corrects any previously
+    wrong placements caused by an outdated KNOCKOUT_ADVANCEMENT mapping.
     For penalty/ET draws (equal score) re-queries ESPN to get the winner flag.
-    Safe to run repeatedly — only fills empty slots.
     """
     import httpx
     from datetime import timedelta
 
     ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
 
+    KNOCKOUT_ROUNDS = {'round_of_16', 'quarter_final', 'semi_final', 'third_place', 'final'}
+
     db = SessionLocal()
     try:
+        # Clear all unstarted R16+ team slots so wrong placements get corrected
+        for m in db.query(models.Match).filter(models.Match.round.in_(KNOCKOUT_ROUNDS)).all():
+            if m.status == 'scheduled':
+                m.home_team_id = None
+                m.away_team_id = None
+        db.commit()
+        logger.info("Backfill: cleared unstarted knockout slots")
+
         team_names: dict[int, str] = {t.id: t.name for t in db.query(models.Team).all()}
 
         # Build reverse map: Hebrew name → team id
@@ -343,7 +353,7 @@ async def backfill_knockout_advancements():
             dest = db.query(models.Match).filter(models.Match.id == dest_id).first()
             if not dest:
                 continue
-            # Skip if slot already filled
+            # Skip if slot already filled (e.g. live match already has teams)
             already_filled = dest.home_team_id if side == 'home' else dest.away_team_id
             if already_filled is not None:
                 continue
