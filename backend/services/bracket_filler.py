@@ -326,17 +326,18 @@ async def backfill_knockout_advancements():
 
     ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
 
-    KNOCKOUT_ROUNDS = {'round_of_16', 'quarter_final', 'semi_final', 'third_place', 'final'}
-
     db = SessionLocal()
     try:
-        # Clear all unstarted R16+ team slots so wrong placements get corrected
-        for m in db.query(models.Match).filter(models.Match.stage.in_(KNOCKOUT_ROUNDS)).all():
-            if m.status == 'scheduled':
+        # Clear all R16+ slots (match IDs 89–104) so stale wrong placements are replaced.
+        # R16 matches haven't started yet — safe to wipe.
+        for m in db.query(models.Match).filter(
+            models.Match.id >= 89, models.Match.id <= 104
+        ).all():
+            if m.status != 'finished':
                 m.home_team_id = None
                 m.away_team_id = None
         db.commit()
-        logger.info("Backfill: cleared unstarted knockout slots")
+        logger.info("Backfill: cleared unstarted knockout slots (IDs 89-104)")
 
         team_names: dict[int, str] = {t.id: t.name for t in db.query(models.Team).all()}
 
