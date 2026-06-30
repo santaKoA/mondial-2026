@@ -266,11 +266,13 @@ SF_LOSER_SLOTS: dict[int, tuple[int, str]] = {
 }
 
 
-def advance_knockout_winner(match_id: int, home_score: int, away_score: int):
+def advance_knockout_winner(match_id: int, home_score: int, away_score: int, winner_side: str | None = None):
     """
     Called after a knockout match finishes.
     Advances the winner to the next bracket slot.
     For SF losers, also fills the 3rd place match.
+    winner_side: 'home'|'away' from ESPN's winner flag (handles penalty draws).
+    Falls back to score comparison if not provided.
     """
     slot = KNOCKOUT_ADVANCEMENT.get(match_id)
     if not slot:
@@ -282,14 +284,20 @@ def advance_knockout_winner(match_id: int, home_score: int, away_score: int):
         if not match:
             return
 
-        if home_score > away_score:
+        if winner_side == 'home':
+            winner_id = match.home_team_id
+            loser_id = match.away_team_id
+        elif winner_side == 'away':
+            winner_id = match.away_team_id
+            loser_id = match.home_team_id
+        elif home_score > away_score:
             winner_id = match.home_team_id
             loser_id = match.away_team_id
         elif away_score > home_score:
             winner_id = match.away_team_id
             loser_id = match.home_team_id
         else:
-            return  # draw shouldn't happen in knockout after ET/pens
+            return  # can't determine winner
 
         dest_match_id, side = slot
         _set_team(db, dest_match_id, side, winner_id)

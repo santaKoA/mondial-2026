@@ -510,7 +510,8 @@ async def sync_live_espn() -> int:
 
         updated = 0
         groups_finalized: set[str] = set()
-        knockout_finalized: list[tuple[int, int, int]] = []  # (match_id, home_score, away_score)
+        # (match_id, home_score, away_score, winner_side)  winner_side: 'home'|'away'|None
+        knockout_finalized: list[tuple[int, int, int, str | None]] = []
         for e in data.get("events", []):
             comp = e.get("competitions", [{}])[0]
             status_info = comp.get("status", {})
@@ -521,16 +522,18 @@ async def sync_live_espn() -> int:
                 continue
             home_heb = away_heb = None
             home_score = away_score = None
+            home_winner = away_winner = False
             for c in comp.get("competitors", []):
                 heb = _to_hebrew(c.get("team", {}).get("displayName", ""))
                 try:
                     sc = int(c.get("score"))
                 except (TypeError, ValueError):
                     sc = None
+                is_winner = c.get("winner", False)
                 if c.get("homeAway") == "home":
-                    home_heb, home_score = heb, sc
+                    home_heb, home_score, home_winner = heb, sc, is_winner
                 else:
-                    away_heb, away_score = heb, sc
+                    away_heb, away_score, away_winner = heb, sc, is_winner
             if home_score is None or away_score is None:
                 continue
             match = index.get((home_heb, away_heb))
@@ -563,10 +566,18 @@ async def sync_live_espn() -> int:
                     # For ET/pens, score_90 was captured during live; use it for points
                     pts_home = match.score_90_home if match.score_90_home is not None else home_score
                     pts_away = match.score_90_away if match.score_90_away is not None else away_score
+                    # Determine winner side — ESPN sets winner=True on the winning competitor
+                    # (works for pens/ET where score may still be a draw)
+                    if home_winner:
+                        winner_side = 'home'
+                    elif away_winner:
+                        winner_side = 'away'
+                    else:
+                        winner_side = None
                     if _apply_result(db, match, home_score, away_score, finished=True,
                                      pts_home=pts_home, pts_away=pts_away):
                         updated += 1
-                        knockout_finalized.append((match.id, home_score, away_score))
+                        knockout_finalized.append((match.id, home_score, away_score, winner_side))
                         logger.info(
                             f"ESPN finalized knockout match {match.id}: {home_score}-{away_score} "
                             f"(pts from 90min: {pts_home}-{pts_away}, status: {status_name})"
@@ -577,8 +588,8 @@ async def sync_live_espn() -> int:
         # Fill bracket AFTER commit so the finished status is visible to fill_bracket_for_group
         for g in groups_finalized:
             fill_bracket_for_group(g)
-        for match_id, hs, as_ in knockout_finalized:
-            advance_knockout_winner(match_id, hs, as_)
+        for match_id, hs, as_, winner_side in knockout_finalized:
+            advance_knockout_winner(match_id, hs, as_, winner_side=winner_side)
         return updated
     finally:
         db.close()
