@@ -242,10 +242,10 @@ KNOCKOUT_ADVANCEMENT: dict[int, tuple[int, str]] = {
     # R32 → R16  (ESPN bracket confirmed Jun 30 2026)
     73: (89, 'home'), 76: (89, 'away'),   # Canada + Morocco → R16 89
     75: (90, 'home'), 78: (90, 'away'),   # Paraguay + France/Sweden → R16 90
-    74: (91, 'home'), 84: (91, 'away'),   # Brazil + Portugal/Croatia → R16 91
-    83: (92, 'home'), 82: (92, 'away'),   # Spain/Austria + USA/Bosnia → R16 92
-    79: (93, 'home'), 80: (93, 'away'),   # Mexico/Ecuador + England/Congo → R16 93
-    81: (94, 'home'), 77: (94, 'away'),   # Belgium/Senegal + Ivory Coast/Norway → R16 94
+    74: (91, 'home'), 77: (91, 'away'),   # Brazil + Ivory Coast/Norway → R16 91
+    79: (92, 'home'), 80: (92, 'away'),   # Mexico/Ecuador + England/Congo → R16 92
+    84: (93, 'home'), 83: (93, 'away'),   # Portugal/Croatia + Spain/Austria → R16 93
+    82: (94, 'home'), 81: (94, 'away'),   # USA/Bosnia + Belgium/Senegal → R16 94
     86: (95, 'home'), 88: (95, 'away'),   # Australia/Egypt + Colombia/Ghana → R16 95
     87: (96, 'home'), 85: (96, 'away'),   # Argentina + Switzerland/Algeria → R16 96
     # R16 → QF
