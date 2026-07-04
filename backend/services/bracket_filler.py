@@ -246,16 +246,16 @@ KNOCKOUT_ADVANCEMENT: dict[int, tuple[int, str]] = {
     79: (92, 'home'), 80: (92, 'away'),   # Mexico/Ecuador + England/Congo → R16 92
     84: (93, 'home'), 83: (93, 'away'),   # Portugal/Croatia + Spain/Austria → R16 93
     82: (94, 'home'), 81: (94, 'away'),   # USA/Bosnia + Belgium/Senegal → R16 94
-    86: (95, 'home'), 88: (95, 'away'),   # Australia/Egypt + Colombia/Ghana → R16 95
-    87: (96, 'home'), 85: (96, 'away'),   # Argentina + Switzerland/Algeria → R16 96
+    87: (95, 'home'), 86: (95, 'away'),   # Argentina + Egypt(Aus/Egy winner) → R16 95
+    85: (96, 'home'), 88: (96, 'away'),   # Switzerland/Algeria + Colombia/Ghana → R16 96
     # R16 → QF
-    89: (97, 'home'), 90: (97, 'away'),
-    91: (99, 'home'), 92: (99, 'away'),
-    93: (98, 'home'), 94: (98, 'away'),
-    95: (100, 'home'), 96: (100, 'away'),
-    # QF → SF  (left bracket: 97+99 → SF101; right bracket: 98+100 → SF102)
-    97: (101, 'home'), 99: (101, 'away'),
-    98: (102, 'home'), 100: (102, 'away'),
+    89: (97, 'home'), 90: (97, 'away'),   # top-left quadrant
+    93: (98, 'home'), 94: (98, 'away'),   # top-right quadrant
+    91: (99, 'home'), 92: (99, 'away'),   # bottom-left quadrant
+    95: (100, 'home'), 96: (100, 'away'), # bottom-right quadrant
+    # QF → SF  (top half: 97+98 → SF101; bottom half: 99+100 → SF102)
+    97: (101, 'home'), 98: (101, 'away'),
+    99: (102, 'home'), 100: (102, 'away'),
     # SF → Final
     101: (104, 'home'), 102: (104, 'away'),
 }
