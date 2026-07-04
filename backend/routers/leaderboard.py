@@ -38,10 +38,13 @@ def _build_leaderboard(users: list[models.User], current_user_id: int, reveal_ot
             # Live matches count too — provisional, recalculated per request
             if m.status not in ("finished", "live") or m.home_score is None or m.away_score is None:
                 continue
-            if p.home_score == m.home_score and p.away_score == m.away_score:
+            # Knockout ET/pens: evaluate against the 90-min score, not the final
+            ref_h = m.score_90_home if m.score_90_home is not None else m.home_score
+            ref_a = m.score_90_away if m.score_90_away is not None else m.away_score
+            if p.home_score == ref_h and p.away_score == ref_a:
                 exact_count += 1
-            elif (p.home_score - p.away_score) * (m.home_score - m.away_score) > 0 or \
-                 (p.home_score == p.away_score and m.home_score == m.away_score):
+            elif (p.home_score - p.away_score) * (ref_h - ref_a) > 0 or \
+                 (p.home_score == p.away_score and ref_h == ref_a):
                 direction_count += 1
         show_special = reveal_others or user.id == current_user_id
         result.append(

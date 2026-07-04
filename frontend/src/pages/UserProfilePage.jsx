@@ -21,8 +21,11 @@ const sign = x => (x > 0 ? 1 : x < 0 ? -1 : 0)
 
 function outcome(p) {
   if (p.home_score == null || p.away_score == null) return 'pending'
-  if (p.pred_home === p.home_score && p.pred_away === p.away_score) return 'exact'
-  if (sign(p.pred_home - p.pred_away) === sign(p.home_score - p.away_score)) return 'dir'
+  // Knockout ET/pens: evaluate against the 90-min score, not the final
+  const refH = p.score_90_home != null ? p.score_90_home : p.home_score
+  const refA = p.score_90_away != null ? p.score_90_away : p.away_score
+  if (p.pred_home === refH && p.pred_away === refA) return 'exact'
+  if (sign(p.pred_home - p.pred_away) === sign(refH - refA)) return 'dir'
   return 'miss'
 }
 

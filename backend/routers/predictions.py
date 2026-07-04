@@ -171,6 +171,8 @@ def user_predictions(
                 "away_flag": p.match.away_team.flag if p.match.away_team else None,
                 "home_score": p.match.home_score,
                 "away_score": p.match.away_score,
+                "score_90_home": p.match.score_90_home,
+                "score_90_away": p.match.score_90_away,
                 "pred_home": p.home_score,
                 "pred_away": p.away_score,
                 "points": p.points,
