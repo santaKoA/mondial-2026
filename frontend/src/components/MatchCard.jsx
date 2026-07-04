@@ -302,8 +302,11 @@ export default function MatchCard({ match, onPredictionSaved }) {
 
   function resultColor() {
     if (!fin || !pred) return null
-    if (pred.home_score === match.home_score && pred.away_score === match.away_score) return 'green'
-    if (Math.sign(pred.home_score - pred.away_score) === Math.sign(match.home_score - match.away_score)) return 'yellow'
+    // Use 90-min score for evaluation (knockout ET/pens must not affect direction)
+    const ref90h = match.score_90_home != null ? match.score_90_home : match.home_score
+    const ref90a = match.score_90_away != null ? match.score_90_away : match.away_score
+    if (pred.home_score === ref90h && pred.away_score === ref90a) return 'green'
+    if (Math.sign(pred.home_score - pred.away_score) === Math.sign(ref90h - ref90a)) return 'yellow'
     return 'red'
   }
   const rc = resultColor()
@@ -495,8 +498,10 @@ export default function MatchCard({ match, onPredictionSaved }) {
               const outcome = p => {
                 if (p.home_score == null) return 'none'
                 if (match.home_score == null || match.away_score == null) return 'pending'
-                if (p.home_score === match.home_score && p.away_score === match.away_score) return 'exact'
-                if (sign(p.home_score - p.away_score) === sign(match.home_score - match.away_score)) return 'dir'
+                const r90h = match.score_90_home != null ? match.score_90_home : match.home_score
+                const r90a = match.score_90_away != null ? match.score_90_away : match.away_score
+                if (p.home_score === r90h && p.away_score === r90a) return 'exact'
+                if (sign(p.home_score - p.away_score) === sign(r90h - r90a)) return 'dir'
                 return 'miss'
               }
               const ORDER = { exact: 0, dir: 1, pending: 2, miss: 3, none: 4 }
