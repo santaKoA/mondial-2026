@@ -392,12 +392,19 @@ async def backfill_knockout_advancements():
                                     continue
                                 h_heb = _to_hebrew(home_c.get("team", {}).get("displayName", ""))
                                 a_heb = _to_hebrew(away_c.get("team", {}).get("displayName", ""))
-                                if (name_to_id.get(h_heb) == src.home_team_id and
-                                        name_to_id.get(a_heb) == src.away_team_id):
+                                h_id = name_to_id.get(h_heb)
+                                a_id = name_to_id.get(a_heb)
+                                # Match regardless of home/away ordering in ESPN vs DB
+                                if ({h_id, a_id} == {src.home_team_id, src.away_team_id}):
                                     if home_c.get("winner"):
-                                        winner_id, loser_id = src.home_team_id, src.away_team_id
+                                        espn_winner_id = h_id
                                     elif away_c.get("winner"):
-                                        winner_id, loser_id = src.away_team_id, src.home_team_id
+                                        espn_winner_id = a_id
+                                    else:
+                                        espn_winner_id = None
+                                    if espn_winner_id:
+                                        winner_id = espn_winner_id
+                                        loser_id = src.home_team_id if espn_winner_id == src.away_team_id else src.away_team_id
                                     break
                             if winner_id:
                                 break
