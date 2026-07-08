@@ -590,6 +590,25 @@ async def sync_live_espn() -> int:
             fill_bracket_for_group(g)
         for match_id, hs, as_, winner_side in knockout_finalized:
             advance_knockout_winner(match_id, hs, as_, winner_side=winner_side)
+        # Safety net: if a pens/ET match finished before ESPN set the winner flag,
+        # advance_knockout_winner couldn't act. The backfill re-queries ESPN and
+        # fills any still-empty next-round slots.
+        from services.bracket_filler import KNOCKOUT_ADVANCEMENT, backfill_knockout_advancements
+        pending_slots = False
+        if not knockout_finalized:
+            for src_id, (dest_id, side) in KNOCKOUT_ADVANCEMENT.items():
+                src = db.query(models.Match).filter(models.Match.id == src_id).first()
+                if not src or src.status != 'finished':
+                    continue
+                dest = db.query(models.Match).filter(models.Match.id == dest_id).first()
+                if dest and (dest.home_team_id if side == 'home' else dest.away_team_id) is None:
+                    pending_slots = True
+                    break
+        if knockout_finalized or pending_slots:
+            try:
+                await backfill_knockout_advancements()
+            except Exception as exc:
+                logger.warning(f"Post-sync knockout backfill failed: {exc}")
         return updated
     finally:
         db.close()
