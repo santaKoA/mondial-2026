@@ -333,7 +333,8 @@ async def backfill_knockout_advancements():
         for m in db.query(models.Match).filter(
             models.Match.id >= 89, models.Match.id <= 104
         ).all():
-            if m.status != 'finished':
+            # Only touch matches that haven't kicked off — never live/finished
+            if m.status == 'scheduled':
                 m.home_team_id = None
                 m.away_team_id = None
         db.commit()

@@ -210,6 +210,7 @@ async def sync_results() -> dict:
             fixture_id = m["id"]
             home_api = m["homeTeam"]["name"]
             away_api = m["awayTeam"]["name"]
+            reversed_match = False  # DB home/away flipped vs API
 
             # Try fixture_id match first (most reliable)
             match = fixture_id_map.get(fixture_id)
@@ -239,6 +240,17 @@ async def sync_results() -> dict:
                     models.Match.scheduled_at >= match_dt - window,
                     models.Match.scheduled_at <= match_dt + window,
                 ).first()
+                if not match:
+                    # Bracket may have home/away reversed vs the API
+                    match = db.query(models.Match).filter(
+                        models.Match.home_team_id == away_team.id,
+                        models.Match.away_team_id == home_team.id,
+                        models.Match.is_test == False,
+                        models.Match.scheduled_at >= match_dt - window,
+                        models.Match.scheduled_at <= match_dt + window,
+                    ).first()
+                    if match:
+                        reversed_match = True
 
                 # Knockout: match by time and auto-assign
                 if not match:
@@ -258,6 +270,8 @@ async def sync_results() -> dict:
             # tier lags, and stale half-time data must not overwrite ESPN)
             if status == "FINISHED":
                 home_score, away_score = _final_scores(m["score"])
+                if reversed_match:
+                    home_score, away_score = away_score, home_score
                 if home_score is not None and away_score is not None:
                     if _apply_result(db, match, home_score, away_score, finished=True):
                         scores_updated += 1
@@ -538,7 +552,13 @@ async def sync_live_espn() -> int:
                 continue
             match = index.get((home_heb, away_heb))
             if not match:
-                continue
+                # Our bracket may have home/away reversed vs ESPN — match the
+                # reversed pair and swap scores/winner flags to DB orientation
+                match = index.get((away_heb, home_heb))
+                if not match:
+                    continue
+                home_score, away_score = away_score, home_score
+                home_winner, away_winner = away_winner, home_winner
             if state == "post" and match.stage == "group":
                 # Group stage: ESPN final == 90-min score → finish + points
                 if _apply_result(db, match, home_score, away_score, finished=True):
